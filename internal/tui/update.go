@@ -32,7 +32,15 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				} else {
 					// Gemini selected
 					m.Provider = "gemini"
-					m.State = StateInputKey
+					if m.APIKey != "" {
+						// API key already set, proceed to generating
+						m.State = StateGenerating
+						return m, tea.Batch(
+							ReadGitDiff(),
+						)
+					} else {
+						m.State = StateInputKey
+					}
 				}
 				return m, nil
 			case StateSelectModel:
@@ -54,15 +62,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return m, nil
 				}
 				m.APIKey = key
-				cfg := &config.Config{
-					Provider: "gemini",
-					APIKey:   key,
-				}
 				m.State = StateGenerating
-				return m, tea.Batch(
-					SaveConfig(cfg),
-					ReadGitDiff(),
-				)
+				return m, ReadGitDiff()
 			case StateShowResult:
 				return m.handleMenuSelection()
 			case StateError:
@@ -156,8 +157,15 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case CommitGeneratedMsg:
 		m.CommitMsg = msg.Commit
+		// Save config after successful generation
+		cfg := &config.Config{
+			Provider:    m.Provider,
+			APIKey:      m.APIKey,
+			OllamaURL:   "http://localhost:11434",
+			OllamaModel: m.OllamaModel,
+		}
 		m.State = StateShowResult
-		return m, nil
+		return m, SaveConfig(cfg)
 
 	case CommitExecutedMsg:
 		m.State = StateSuccess

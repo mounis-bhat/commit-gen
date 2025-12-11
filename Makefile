@@ -9,7 +9,6 @@ help:
 	@echo "  make build        - Build the binary to $(BUILD_DIR)/"
 	@echo "  make clean        - Remove the build directory"
 	@echo "  make run          - Run with: make run API_KEY=your_key"
-	@echo "  make install      - Build and install to /usr/local/bin"
 	@echo "  make install-home - Build and install to ~/bin"
 
 build:
