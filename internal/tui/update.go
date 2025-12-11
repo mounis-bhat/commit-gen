@@ -17,11 +17,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {
-		case "ctrl+c", "q":
-			if m.State != StateInputKey && m.State != StateSelectFiles {
-				return m, tea.Quit
-			}
-			if m.State == StateSelectFiles {
+		case "ctrl+c":
+			return m, tea.Quit
+		case "q":
+			if m.State != StateInputKey {
 				return m, tea.Quit
 			}
 		case "enter":
@@ -98,49 +97,59 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, tea.Quit
 			}
 		case "up", "k":
-			if m.State == StateSelectProvider {
+			switch m.State {
+			case StateSelectProvider:
 				m.SelectedItem--
 				if m.SelectedItem < 0 {
 					m.SelectedItem = 1
 				}
-			} else if m.State == StateSelectModel {
-				m.SelectedItem--
-				if m.SelectedItem < 0 {
-					m.SelectedItem = len(m.OllamaModels) - 1
+			case StateSelectModel:
+				if len(m.OllamaModels) > 0 {
+					m.SelectedItem--
+					if m.SelectedItem < 0 {
+						m.SelectedItem = len(m.OllamaModels) - 1
+					}
 				}
-			} else if m.State == StateShowResult {
+			case StateShowResult:
 				m.SelectedItem--
 				if m.SelectedItem < 0 {
 					m.SelectedItem = len(m.MenuItems) - 1
 				}
-			} else if m.State == StateSelectFiles {
+			case StateSelectFiles:
 				allFiles := m.GetAllFiles()
-				m.SelectedItem--
-				if m.SelectedItem < 0 {
-					m.SelectedItem = len(allFiles) - 1
+				if len(allFiles) > 0 {
+					m.SelectedItem--
+					if m.SelectedItem < 0 {
+						m.SelectedItem = len(allFiles) - 1
+					}
 				}
 			}
 		case "down", "j":
-			if m.State == StateSelectProvider {
+			switch m.State {
+			case StateSelectProvider:
 				m.SelectedItem++
 				if m.SelectedItem > 1 {
 					m.SelectedItem = 0
 				}
-			} else if m.State == StateSelectModel {
-				m.SelectedItem++
-				if m.SelectedItem >= len(m.OllamaModels) {
-					m.SelectedItem = 0
+			case StateSelectModel:
+				if len(m.OllamaModels) > 0 {
+					m.SelectedItem++
+					if m.SelectedItem >= len(m.OllamaModels) {
+						m.SelectedItem = 0
+					}
 				}
-			} else if m.State == StateShowResult {
+			case StateShowResult:
 				m.SelectedItem++
 				if m.SelectedItem >= len(m.MenuItems) {
 					m.SelectedItem = 0
 				}
-			} else if m.State == StateSelectFiles {
+			case StateSelectFiles:
 				allFiles := m.GetAllFiles()
-				m.SelectedItem++
-				if m.SelectedItem >= len(allFiles) {
-					m.SelectedItem = 0
+				if len(allFiles) > 0 {
+					m.SelectedItem++
+					if m.SelectedItem >= len(allFiles) {
+						m.SelectedItem = 0
+					}
 				}
 			}
 		case " ": // Space to toggle file selection
@@ -151,14 +160,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.State == StateSelectFiles {
 				allFiles := m.GetAllFiles()
 				allSelected := true
-				for i := 0; i < len(allFiles); i++ {
+				for i := range allFiles {
 					if !m.SelectedFiles[i] {
 						allSelected = false
 						break
 					}
 				}
 				// Toggle all: if all selected, deselect all; otherwise select all
-				for i := 0; i < len(allFiles); i++ {
+				for i := range allFiles {
 					m.SelectedFiles[i] = !allSelected
 				}
 			}
@@ -193,6 +202,22 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.Width = msg.Width
 		m.Height = msg.Height
 
+		// Update viewport dimensions
+		contentHeight := m.GetContentHeight()
+		m.Viewport.Width = m.GetContentWidth()
+		m.Viewport.Height = contentHeight
+
+		// Update text input width
+		inputWidth := m.GetContentWidth() - 10
+		if inputWidth < 20 {
+			inputWidth = 20
+		}
+		m.TextInput.Width = inputWidth
+
+		if !m.Ready {
+			m.Ready = true
+		}
+
 	case ConfigLoadedMsg:
 		cfg := msg.Config
 		// Always show provider selection, but load saved config for convenience
@@ -201,9 +226,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if cfg.Provider != "" {
 			m.Provider = cfg.Provider
 			// Pre-select the saved provider
-			if cfg.Provider == "ollama" {
+			switch cfg.Provider {
+			case "ollama":
 				m.SelectedItem = 0
-			} else if cfg.Provider == "gemini" {
+			case "gemini":
 				m.SelectedItem = 1
 			}
 		}

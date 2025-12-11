@@ -3,6 +3,7 @@ package tui
 import (
 	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/textinput"
+	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
@@ -26,6 +27,84 @@ const (
 	StateError
 	StateSuccess
 )
+
+// Step represents a workflow step for progress tracking
+type Step struct {
+	Name      string
+	Completed bool
+	Active    bool
+}
+
+// GetSteps returns the workflow steps based on current state
+func (m Model) GetSteps() []Step {
+	steps := []Step{
+		{Name: "Provider", Completed: false, Active: false},
+		{Name: "Files", Completed: false, Active: false},
+		{Name: "Generate", Completed: false, Active: false},
+		{Name: "Action", Completed: false, Active: false},
+	}
+
+	switch m.State {
+	case StateCheckingConfig:
+		// No steps active yet
+	case StateSelectProvider, StateSelectModel, StateInputKey:
+		steps[0].Active = true
+	case StateSelectFiles, StateStaging:
+		steps[0].Completed = true
+		steps[1].Active = true
+	case StateGenerating:
+		steps[0].Completed = true
+		steps[1].Completed = true
+		steps[2].Active = true
+	case StateShowResult:
+		steps[0].Completed = true
+		steps[1].Completed = true
+		steps[2].Completed = true
+		steps[3].Active = true
+	case StatePushing:
+		steps[0].Completed = true
+		steps[1].Completed = true
+		steps[2].Completed = true
+		steps[3].Active = true
+	case StateSuccess:
+		steps[0].Completed = true
+		steps[1].Completed = true
+		steps[2].Completed = true
+		steps[3].Completed = true
+	case StateError:
+		// Mark completed steps based on where we got to
+		if m.Provider != "" {
+			steps[0].Completed = true
+		}
+		if len(m.StagedFiles) > 0 || len(m.UnstagedFiles) > 0 {
+			steps[1].Completed = true
+		}
+		if m.CommitMsg != "" {
+			steps[2].Completed = true
+		}
+	}
+
+	return steps
+}
+
+// GetCurrentStepNumber returns the current step number (1-based)
+func (m Model) GetCurrentStepNumber() int {
+	switch m.State {
+	case StateCheckingConfig:
+		return 0
+	case StateSelectProvider, StateSelectModel, StateInputKey:
+		return 1
+	case StateSelectFiles, StateStaging:
+		return 2
+	case StateGenerating:
+		return 3
+	case StateShowResult, StatePushing:
+		return 4
+	case StateSuccess, StateError:
+		return 4
+	}
+	return 0
+}
 
 // Message types for Bubble Tea
 type (
@@ -51,6 +130,7 @@ type Model struct {
 	State          AppState
 	Spinner        spinner.Model
 	TextInput      textinput.Model
+	Viewport       viewport.Model
 	Provider       string
 	APIKey         string
 	OllamaModel    string
@@ -67,7 +147,16 @@ type Model struct {
 	UntrackedFiles []git.FileStatus
 	SelectedFiles  map[int]bool // map of file index to selected state
 	SuccessAction  string       // tracks what action succeeded for success message
+	Ready          bool         // whether viewport is ready
 }
+
+// Default dimensions
+const (
+	defaultWidth  = 80
+	defaultHeight = 24
+	minWidth      = 40
+	minHeight     = 15
+)
 
 // NewModel creates and returns an initialized Model.
 func NewModel() Model {
@@ -83,13 +172,20 @@ func NewModel() Model {
 	ti.EchoMode = textinput.EchoPassword
 	ti.EchoCharacter = '•'
 
+	vp := viewport.New(defaultWidth, defaultHeight-10)
+	vp.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("#F8F8F2"))
+
 	return Model{
 		State:         StateCheckingConfig,
 		Spinner:       s,
 		TextInput:     ti,
+		Viewport:      vp,
 		MenuItems:     []string{"Copy to clipboard", "Execute commit", "Execute commit and push", "Regenerate", "Quit"},
 		SelectedItem:  0,
 		SelectedFiles: make(map[int]bool),
+		Width:         defaultWidth,
+		Height:        defaultHeight,
+		Ready:         false,
 	}
 }
 
@@ -143,6 +239,24 @@ func (m Model) GetFilesToUnstage() []string {
 		}
 	}
 	return paths
+}
+
+// GetContentWidth returns the usable content width
+func (m Model) GetContentWidth() int {
+	w := m.Width
+	if w < minWidth {
+		w = minWidth
+	}
+	return w - 6 // Account for container padding and border
+}
+
+// GetContentHeight returns the usable content height
+func (m Model) GetContentHeight() int {
+	h := m.Height
+	if h < minHeight {
+		h = minHeight
+	}
+	return h - 10 // Account for header, footer, progress bar
 }
 
 // Init implements tea.Model.

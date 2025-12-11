@@ -1,6 +1,6 @@
 .PHONY: build clean run help install install-home
 
-BINARY_NAME=git-commit-generator
+BINARY_NAME=commit-gen
 BUILD_DIR=bin
 GO=go
 
