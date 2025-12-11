@@ -26,6 +26,14 @@ type ollamaResponse struct {
 	Done     bool   `json:"done"`
 }
 
+type ollamaModel struct {
+	Name string `json:"name"`
+}
+
+type ollamaTagsResponse struct {
+	Models []ollamaModel `json:"models"`
+}
+
 func NewOllamaProvider(baseURL, model string) (*OllamaProvider, error) {
 	if baseURL == "" {
 		baseURL = "http://localhost:11434"
@@ -78,4 +86,34 @@ func (p *OllamaProvider) GenerateCommitMessage(ctx context.Context, diff string)
 
 func (p *OllamaProvider) Name() string {
 	return "ollama"
+}
+
+func (p *OllamaProvider) ListModels(ctx context.Context) ([]string, error) {
+	req, err := http.NewRequestWithContext(ctx, "GET", p.baseURL+"/api/tags", nil)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch models from Ollama: %w", err)
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	var result ollamaTagsResponse
+	if err := json.Unmarshal(body, &result); err != nil {
+		return nil, err
+	}
+
+	models := make([]string, len(result.Models))
+	for i, model := range result.Models {
+		models[i] = model.Name
+	}
+
+	return models, nil
 }

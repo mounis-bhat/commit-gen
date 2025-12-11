@@ -43,14 +43,18 @@ func (m Model) View() string {
 	case StateSelectModel:
 		s.WriteString(InfoStyle.Render("Select Ollama Model:"))
 		s.WriteString("\n\n")
-		models := []string{"qwen2.5-coder:3b", "phi3:mini"}
-		for i, model := range models {
-			if i == m.SelectedItem {
-				s.WriteString(SelectedMenuItemStyle.Render("→ " + model))
-			} else {
-				s.WriteString("  " + model)
+		if len(m.OllamaModels) == 0 {
+			s.WriteString(m.Spinner.View())
+			s.WriteString(InfoStyle.Render(" Fetching available models..."))
+		} else {
+			for i, model := range m.OllamaModels {
+				if i == m.SelectedItem {
+					s.WriteString(SelectedMenuItemStyle.Render("→ " + model))
+				} else {
+					s.WriteString("  " + model)
+				}
+				s.WriteString("\n")
 			}
-			s.WriteString("\n")
 		}
 		s.WriteString("\n")
 		s.WriteString(HelpStyle.Render("↑/↓ to navigate • Enter to select"))

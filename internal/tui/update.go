@@ -29,6 +29,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.Provider = "ollama"
 					m.State = StateSelectModel
 					m.SelectedItem = 0
+					if len(m.OllamaModels) == 0 {
+						return m, FetchOllamaModels("http://localhost:11434")
+					}
 				} else {
 					// Gemini selected
 					m.Provider = "gemini"
@@ -44,8 +47,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 				return m, nil
 			case StateSelectModel:
-				models := []string{"qwen2.5-coder:3b", "phi3:mini"}
-				model := models[m.SelectedItem]
+				if len(m.OllamaModels) == 0 || m.SelectedItem >= len(m.OllamaModels) {
+					return m, nil // Wait for models to load
+				}
+				model := m.OllamaModels[m.SelectedItem]
 				cfg := &config.Config{
 					Provider:    "ollama",
 					OllamaURL:   "http://localhost:11434",
@@ -72,10 +77,15 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, tea.Quit
 			}
 		case "up", "k":
-			if m.State == StateSelectProvider || m.State == StateSelectModel {
+			if m.State == StateSelectProvider {
 				m.SelectedItem--
 				if m.SelectedItem < 0 {
 					m.SelectedItem = 1
+				}
+			} else if m.State == StateSelectModel {
+				m.SelectedItem--
+				if m.SelectedItem < 0 {
+					m.SelectedItem = len(m.OllamaModels) - 1
 				}
 			} else if m.State == StateShowResult {
 				m.SelectedItem--
@@ -84,9 +94,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 		case "down", "j":
-			if m.State == StateSelectProvider || m.State == StateSelectModel {
+			if m.State == StateSelectProvider {
 				m.SelectedItem++
 				if m.SelectedItem > 1 {
+					m.SelectedItem = 0
+				}
+			} else if m.State == StateSelectModel {
+				m.SelectedItem++
+				if m.SelectedItem >= len(m.OllamaModels) {
 					m.SelectedItem = 0
 				}
 			} else if m.State == StateShowResult {
@@ -169,6 +184,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case CommitExecutedMsg:
 		m.State = StateSuccess
+		return m, nil
+
+	case ModelsFetchedMsg:
+		m.OllamaModels = msg.Models
 		return m, nil
 
 	case ErrorMsg:

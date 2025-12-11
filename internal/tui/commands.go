@@ -10,6 +10,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/mounis-bhat/commit-gen/internal/ai"
+	"github.com/mounis-bhat/commit-gen/internal/ai/providers"
 	"github.com/mounis-bhat/commit-gen/internal/config"
 	"github.com/mounis-bhat/commit-gen/internal/git"
 )
@@ -77,5 +78,21 @@ func ExecuteCommit(commitMsg string) tea.Cmd {
 		}
 
 		return CommitExecutedMsg{}
+	}
+}
+
+// FetchOllamaModels fetches available Ollama models.
+func FetchOllamaModels(baseURL string) tea.Cmd {
+	return func() tea.Msg {
+		provider, err := providers.NewOllamaProvider(baseURL, "")
+		if err != nil {
+			return ErrorMsg{Err: fmt.Errorf("failed to create Ollama provider: %w", err)}
+		}
+		ctx := context.Background()
+		models, err := provider.ListModels(ctx)
+		if err != nil {
+			return ErrorMsg{Err: fmt.Errorf("failed to fetch Ollama models: %w", err)}
+		}
+		return ModelsFetchedMsg{Models: models}
 	}
 }

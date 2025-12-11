@@ -31,6 +31,7 @@ type (
 	CommitGeneratedMsg struct{ Commit string }
 	ErrorMsg           struct{ Err error }
 	CommitExecutedMsg  struct{}
+	ModelsFetchedMsg   struct{ Models []string }
 )
 
 // Model for Bubble Tea
@@ -41,6 +42,7 @@ type Model struct {
 	Provider     string
 	APIKey       string
 	OllamaModel  string
+	OllamaModels []string
 	Diff         string
 	CommitMsg    string
 	Err          error
