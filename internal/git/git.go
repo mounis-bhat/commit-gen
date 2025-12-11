@@ -134,3 +134,59 @@ func Push() error {
 
 	return nil
 }
+
+// GetStagedFiles returns a list of files that are currently staged.
+func GetStagedFiles() ([]FileStatus, error) {
+	cmd := exec.Command("git", "diff", "--cached", "--name-status")
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = os.Stderr
+
+	if err := cmd.Run(); err != nil {
+		return nil, fmt.Errorf("git diff --cached failed: %w", err)
+	}
+
+	var files []FileStatus
+	lines := strings.Split(strings.TrimSpace(out.String()), "\n")
+	for _, line := range lines {
+		if line == "" {
+			continue
+		}
+		parts := strings.SplitN(line, "\t", 2)
+		if len(parts) < 2 {
+			continue
+		}
+		status := "modified"
+		switch parts[0] {
+		case "D":
+			status = "deleted"
+		case "R":
+			status = "renamed"
+		case "M":
+			status = "modified"
+		case "A":
+			status = "added"
+		}
+		files = append(files, FileStatus{Path: parts[1], Status: status})
+	}
+
+	return files, nil
+}
+
+// UnstageFiles unstages the given files using git restore --staged.
+func UnstageFiles(files []string) error {
+	if len(files) == 0 {
+		return nil
+	}
+
+	args := append([]string{"restore", "--staged"}, files...)
+	cmd := exec.Command("git", args...)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("git restore --staged failed: %w", err)
+	}
+
+	return nil
+}

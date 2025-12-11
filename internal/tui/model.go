@@ -37,11 +37,13 @@ type (
 	CommitExecutedMsg  struct{}
 	ModelsFetchedMsg   struct{ Models []string }
 	FilesReadyMsg      struct {
+		Staged    []git.FileStatus
 		Unstaged  []git.FileStatus
 		Untracked []git.FileStatus
 	}
-	FilesStagedMsg  struct{}
-	PushExecutedMsg struct{}
+	FilesStagedMsg   struct{}
+	FilesUnstagedMsg struct{}
+	PushExecutedMsg  struct{}
 )
 
 // Model for Bubble Tea
@@ -60,6 +62,7 @@ type Model struct {
 	Height         int
 	SelectedItem   int
 	MenuItems      []string
+	StagedFiles    []git.FileStatus
 	UnstagedFiles  []git.FileStatus
 	UntrackedFiles []git.FileStatus
 	SelectedFiles  map[int]bool // map of file index to selected state
@@ -90,12 +93,18 @@ func NewModel() Model {
 	}
 }
 
-// GetAllFiles returns all files (unstaged + untracked) as a combined slice.
+// GetAllFiles returns all files (staged + unstaged + untracked) as a combined slice.
 func (m Model) GetAllFiles() []git.FileStatus {
-	all := make([]git.FileStatus, 0, len(m.UnstagedFiles)+len(m.UntrackedFiles))
+	all := make([]git.FileStatus, 0, len(m.StagedFiles)+len(m.UnstagedFiles)+len(m.UntrackedFiles))
+	all = append(all, m.StagedFiles...)
 	all = append(all, m.UnstagedFiles...)
 	all = append(all, m.UntrackedFiles...)
 	return all
+}
+
+// GetStagedFileCount returns the number of staged files.
+func (m Model) GetStagedFileCount() int {
+	return len(m.StagedFiles)
 }
 
 // GetSelectedFilePaths returns the paths of selected files.
@@ -105,6 +114,32 @@ func (m Model) GetSelectedFilePaths() []string {
 	for idx, selected := range m.SelectedFiles {
 		if selected && idx < len(allFiles) {
 			paths = append(paths, allFiles[idx].Path)
+		}
+	}
+	return paths
+}
+
+// GetFilesToStage returns paths of files that need to be staged (selected but not currently staged).
+func (m Model) GetFilesToStage() []string {
+	stagedCount := len(m.StagedFiles)
+	allFiles := m.GetAllFiles()
+	var paths []string
+	for idx, selected := range m.SelectedFiles {
+		// Only include files that are not already staged (index >= stagedCount)
+		if selected && idx >= stagedCount && idx < len(allFiles) {
+			paths = append(paths, allFiles[idx].Path)
+		}
+	}
+	return paths
+}
+
+// GetFilesToUnstage returns paths of files that need to be unstaged (staged but not selected).
+func (m Model) GetFilesToUnstage() []string {
+	var paths []string
+	for idx, file := range m.StagedFiles {
+		// If this staged file is not selected, it should be unstaged
+		if !m.SelectedFiles[idx] {
+			paths = append(paths, file.Path)
 		}
 	}
 	return paths

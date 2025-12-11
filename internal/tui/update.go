@@ -39,11 +39,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					// Gemini selected
 					m.Provider = "gemini"
 					if m.APIKey != "" {
-						// API key already set, proceed to generating
-						m.State = StateGenerating
-						return m, tea.Batch(
-							ReadGitDiff(),
-						)
+						// API key already set, proceed to file selection
+						return m, ReadAvailableFiles()
 					} else {
 						m.State = StateInputKey
 					}
@@ -60,10 +57,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					OllamaModel: model,
 				}
 				m.OllamaModel = model
-				m.State = StateGenerating
+				// Proceed to file selection instead of directly generating
 				return m, tea.Batch(
 					SaveConfig(cfg),
-					ReadGitDiff(),
+					ReadAvailableFiles(),
 				)
 			case StateInputKey:
 				key := strings.TrimSpace(m.TextInput.Value())
@@ -71,16 +68,28 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return m, nil
 				}
 				m.APIKey = key
-				m.State = StateGenerating
-				return m, ReadGitDiff()
+				// Proceed to file selection instead of directly generating
+				return m, ReadAvailableFiles()
 			case StateSelectFiles:
-				// Stage selected files and proceed
+				// Check if any files are selected
 				selectedPaths := m.GetSelectedFilePaths()
 				if len(selectedPaths) == 0 {
 					return m, nil // No files selected
 				}
+
+				// Get files that need to be staged and unstaged
+				toStage := m.GetFilesToStage()
+				toUnstage := m.GetFilesToUnstage()
+
+				// If no changes needed (all staged files selected, no new files to stage)
+				if len(toStage) == 0 && len(toUnstage) == 0 {
+					// Proceed directly to generating
+					m.State = StateGenerating
+					return m, ReadGitDiff()
+				}
+
 				m.State = StateStaging
-				return m, StageSelectedFiles(selectedPaths)
+				return m, ApplyStagingChanges(toStage, toUnstage)
 			case StateShowResult:
 				return m.handleMenuSelection()
 			case StateError:
@@ -207,10 +216,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case DiffReadyMsg:
 		m.Diff = msg.Diff
-		// Check if diff is empty - need to show file picker
+		// Check if diff is empty (shouldn't happen as we validate in file selection)
 		if strings.TrimSpace(msg.Diff) == "" {
-			// No staged changes, fetch available files
-			return m, ReadAvailableFiles()
+			return m, func() tea.Msg {
+				return ErrorMsg{Err: fmt.Errorf("no staged changes found")}
+			}
 		}
 		provider, err := ai.NewProvider(&config.Config{
 			Provider:    m.Provider,
@@ -224,10 +234,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, GenerateCommit(provider, m.Diff)
 
 	case FilesReadyMsg:
+		m.StagedFiles = msg.Staged
 		m.UnstagedFiles = msg.Unstaged
 		m.UntrackedFiles = msg.Untracked
-		// Check if there are any files to stage
-		if len(msg.Unstaged) == 0 && len(msg.Untracked) == 0 {
+		// Check if there are any files at all
+		if len(msg.Staged) == 0 && len(msg.Unstaged) == 0 && len(msg.Untracked) == 0 {
 			return m, func() tea.Msg {
 				return ErrorMsg{Err: fmt.Errorf("no changes detected. Nothing to commit")}
 			}
@@ -235,6 +246,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.State = StateSelectFiles
 		m.SelectedItem = 0
 		m.SelectedFiles = make(map[int]bool)
+		// Pre-select all staged files
+		for i := 0; i < len(msg.Staged); i++ {
+			m.SelectedFiles[i] = true
+		}
 		return m, nil
 
 	case FilesStagedMsg:

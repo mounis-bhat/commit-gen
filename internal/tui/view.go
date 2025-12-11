@@ -72,17 +72,43 @@ func (m Model) View() string {
 		s.WriteString(HelpStyle.Render("Press Enter to continue"))
 
 	case StateSelectFiles:
-		s.WriteString(WarningStyle.Render("No staged changes found."))
-		s.WriteString("\n\n")
-		s.WriteString(InfoStyle.Render("Select files to stage:"))
+		s.WriteString(InfoStyle.Render("Select files to include in commit:"))
 		s.WriteString("\n\n")
 
 		allFiles := m.GetAllFiles()
 		fileIdx := 0
 
-		// Show modified files
+		// Show staged files
+		if len(m.StagedFiles) > 0 {
+			s.WriteString(SuccessStyle.Render("Staged:"))
+			s.WriteString("\n")
+			for _, file := range m.StagedFiles {
+				checkbox := "[ ]"
+				if m.SelectedFiles[fileIdx] {
+					checkbox = "[x]"
+				}
+				cursor := "  "
+				if fileIdx == m.SelectedItem {
+					cursor = SelectedMenuItemStyle.Render("→ ")
+				}
+				statusLabel := ""
+				switch file.Status {
+				case "deleted":
+					statusLabel = ErrorStyle.Render(" (deleted)")
+				case "renamed":
+					statusLabel = WarningStyle.Render(" (renamed)")
+				case "added":
+					statusLabel = SuccessStyle.Render(" (new)")
+				}
+				s.WriteString(fmt.Sprintf("%s%s %s%s\n", cursor, checkbox, file.Path, statusLabel))
+				fileIdx++
+			}
+			s.WriteString("\n")
+		}
+
+		// Show modified files (unstaged)
 		if len(m.UnstagedFiles) > 0 {
-			s.WriteString(HelpStyle.Render("Modified/Deleted:"))
+			s.WriteString(WarningStyle.Render("Modified (unstaged):"))
 			s.WriteString("\n")
 			for _, file := range m.UnstagedFiles {
 				checkbox := "[ ]"
@@ -133,7 +159,7 @@ func (m Model) View() string {
 		}
 		s.WriteString(InfoStyle.Render(fmt.Sprintf("Selected: %d/%d files", selectedCount, len(allFiles))))
 		s.WriteString("\n\n")
-		s.WriteString(HelpStyle.Render("↑/↓ navigate • Space toggle • a toggle all • Enter stage and continue • q quit"))
+		s.WriteString(HelpStyle.Render("↑/↓ navigate • Space toggle • a toggle all • Enter continue • q quit"))
 
 	case StateStaging:
 		s.WriteString(m.Spinner.View())

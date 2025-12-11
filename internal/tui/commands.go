@@ -52,9 +52,14 @@ func ReadGitDiff() tea.Cmd {
 	}
 }
 
-// ReadAvailableFiles reads unstaged and untracked files.
+// ReadAvailableFiles reads staged, unstaged, and untracked files.
 func ReadAvailableFiles() tea.Cmd {
 	return func() tea.Msg {
+		staged, err := git.GetStagedFiles()
+		if err != nil {
+			return ErrorMsg{Err: err}
+		}
+
 		unstaged, err := git.GetUnstagedFiles()
 		if err != nil {
 			return ErrorMsg{Err: err}
@@ -65,7 +70,7 @@ func ReadAvailableFiles() tea.Cmd {
 			return ErrorMsg{Err: err}
 		}
 
-		return FilesReadyMsg{Unstaged: unstaged, Untracked: untracked}
+		return FilesReadyMsg{Staged: staged, Unstaged: unstaged, Untracked: untracked}
 	}
 }
 
@@ -75,6 +80,37 @@ func StageSelectedFiles(files []string) tea.Cmd {
 		if err := git.StageFiles(files); err != nil {
 			return ErrorMsg{Err: err}
 		}
+		return FilesStagedMsg{}
+	}
+}
+
+// UnstageSelectedFiles unstages the given files.
+func UnstageSelectedFiles(files []string) tea.Cmd {
+	return func() tea.Msg {
+		if err := git.UnstageFiles(files); err != nil {
+			return ErrorMsg{Err: err}
+		}
+		return FilesUnstagedMsg{}
+	}
+}
+
+// ApplyStagingChanges applies both staging and unstaging in one operation.
+func ApplyStagingChanges(toStage, toUnstage []string) tea.Cmd {
+	return func() tea.Msg {
+		// First unstage files that should be removed
+		if len(toUnstage) > 0 {
+			if err := git.UnstageFiles(toUnstage); err != nil {
+				return ErrorMsg{Err: err}
+			}
+		}
+
+		// Then stage files that should be added
+		if len(toStage) > 0 {
+			if err := git.StageFiles(toStage); err != nil {
+				return ErrorMsg{Err: err}
+			}
+		}
+
 		return FilesStagedMsg{}
 	}
 }
