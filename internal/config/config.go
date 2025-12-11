@@ -8,7 +8,10 @@ import (
 
 // Config represents the application configuration.
 type Config struct {
-	APIKey string `json:"api_key"`
+	Provider    string `json:"provider"`     // "gemini" or "ollama"
+	APIKey      string `json:"api_key"`      // for gemini
+	OllamaURL   string `json:"ollama_url"`   // default: http://localhost:11434
+	OllamaModel string `json:"ollama_model"` // e.g., "qwen2.5-coder:3b"
 }
 
 // GetConfigPath returns the path to the configuration file.
@@ -31,6 +34,14 @@ func Load() (*Config, error) {
 	var config Config
 	if err := json.Unmarshal(data, &config); err != nil {
 		return nil, err
+	}
+
+	// Set defaults for Ollama
+	if config.OllamaURL == "" {
+		config.OllamaURL = "http://localhost:11434"
+	}
+	if config.OllamaModel == "" {
+		config.OllamaModel = "qwen2.5-coder:3b"
 	}
 
 	return &config, nil

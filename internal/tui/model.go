@@ -5,13 +5,17 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+
+	"github.com/mounis-bhat/commit-gen/internal/config"
 )
 
 // AppState represents the current state of the application.
 type AppState int
 
 const (
-	StateCheckingKey AppState = iota
+	StateCheckingConfig AppState = iota
+	StateSelectProvider
+	StateSelectModel
 	StateInputKey
 	StateGenerating
 	StateShowResult
@@ -21,7 +25,7 @@ const (
 
 // Message types for Bubble Tea
 type (
-	APIKeyLoadedMsg    struct{ Key string }
+	ConfigLoadedMsg    struct{ Config *config.Config }
 	APIKeySavedMsg     struct{}
 	DiffReadyMsg       struct{ Diff string }
 	CommitGeneratedMsg struct{ Commit string }
@@ -34,7 +38,9 @@ type Model struct {
 	State        AppState
 	Spinner      spinner.Model
 	TextInput    textinput.Model
+	Provider     string
 	APIKey       string
+	OllamaModel  string
 	Diff         string
 	CommitMsg    string
 	Err          error
@@ -59,7 +65,7 @@ func NewModel() Model {
 	ti.EchoCharacter = '•'
 
 	return Model{
-		State:        StateCheckingKey,
+		State:        StateCheckingConfig,
 		Spinner:      s,
 		TextInput:    ti,
 		MenuItems:    []string{"Copy to clipboard", "Execute commit", "Regenerate", "Quit"},
@@ -71,6 +77,6 @@ func NewModel() Model {
 func (m Model) Init() tea.Cmd {
 	return tea.Batch(
 		m.Spinner.Tick,
-		LoadAPIKey(),
+		LoadConfig(),
 	)
 }

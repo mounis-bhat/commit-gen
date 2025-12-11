@@ -1,4 +1,4 @@
-package ai
+package providers
 
 import (
 	"context"
@@ -8,17 +8,17 @@ import (
 	"google.golang.org/genai"
 )
 
-const (
-	// ModelName is the Gemini model to use for generation.
-	ModelName = "gemini-2.5-flash"
-	// MaxDiffSize is the maximum size of diff to send to the API.
-	MaxDiffSize = 8000
-)
+type GeminiProvider struct {
+	apiKey string
+}
 
-// GenerateCommitMessage generates a commit message from the given diff using the Gemini API.
-func GenerateCommitMessage(ctx context.Context, apiKey, diff string) (string, error) {
+func NewGeminiProvider(apiKey string) (*GeminiProvider, error) {
+	return &GeminiProvider{apiKey: apiKey}, nil
+}
+
+func (p *GeminiProvider) GenerateCommitMessage(ctx context.Context, diff string) (string, error) {
 	client, err := genai.NewClient(ctx, &genai.ClientConfig{
-		APIKey:  apiKey,
+		APIKey:  p.apiKey,
 		Backend: genai.BackendGeminiAPI,
 	})
 	if err != nil {
@@ -62,4 +62,8 @@ func GenerateCommitMessage(ctx context.Context, apiKey, diff string) (string, er
 	}
 
 	return strings.TrimSpace(result.String()), nil
+}
+
+func (p *GeminiProvider) Name() string {
+	return "gemini"
 }

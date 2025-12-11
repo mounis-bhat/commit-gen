@@ -16,9 +16,44 @@ func (m Model) View() string {
 	s.WriteString("\n\n")
 
 	switch m.State {
-	case StateCheckingKey:
+	case StateCheckingConfig:
 		s.WriteString(m.Spinner.View())
-		s.WriteString(InfoStyle.Render(" Checking for saved API key..."))
+		s.WriteString(InfoStyle.Render(" Checking for saved configuration..."))
+
+	case StateSelectProvider:
+		s.WriteString(InfoStyle.Render("Select AI Provider:"))
+		s.WriteString("\n\n")
+		providers := []string{"Ollama (local, free)", "Gemini (cloud, API key)"}
+		for i, provider := range providers {
+			prefix := "  "
+			if i == m.SelectedItem {
+				prefix = SelectedMenuItemStyle.Render("→ ")
+			}
+			providerText := provider
+			// Show current/saved provider
+			if (i == 0 && m.Provider == "ollama") || (i == 1 && m.Provider == "gemini") {
+				providerText += " (current)"
+			}
+			s.WriteString(prefix + providerText)
+			s.WriteString("\n")
+		}
+		s.WriteString("\n")
+		s.WriteString(HelpStyle.Render("↑/↓ to navigate • Enter to select"))
+
+	case StateSelectModel:
+		s.WriteString(InfoStyle.Render("Select Ollama Model:"))
+		s.WriteString("\n\n")
+		models := []string{"qwen2.5-coder:3b", "phi3:mini"}
+		for i, model := range models {
+			if i == m.SelectedItem {
+				s.WriteString(SelectedMenuItemStyle.Render("→ " + model))
+			} else {
+				s.WriteString("  " + model)
+			}
+			s.WriteString("\n")
+		}
+		s.WriteString("\n")
+		s.WriteString(HelpStyle.Render("↑/↓ to navigate • Enter to select"))
 
 	case StateInputKey:
 		s.WriteString(WarningStyle.Render("No API key found!"))

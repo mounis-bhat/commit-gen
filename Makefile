@@ -22,8 +22,5 @@ clean:
 run: build
 	./$(BUILD_DIR)/$(BINARY_NAME) $(API_KEY)
 
-install: build
-	sudo cp $(BUILD_DIR)/$(BINARY_NAME) /usr/local/bin/
-
 install-home: build
 	mkdir -p $(HOME)/bin && cp $(BUILD_DIR)/$(BINARY_NAME) $(HOME)/bin/

@@ -14,21 +14,24 @@ import (
 	"github.com/mounis-bhat/commit-gen/internal/git"
 )
 
-// LoadAPIKey loads the API key from the config file.
-func LoadAPIKey() tea.Cmd {
+// LoadConfig loads the configuration from the config file.
+func LoadConfig() tea.Cmd {
 	return func() tea.Msg {
 		cfg, err := config.Load()
 		if err != nil {
-			return APIKeyLoadedMsg{Key: ""}
+			// Return empty config with defaults
+			return ConfigLoadedMsg{Config: &config.Config{
+				OllamaURL:   "http://localhost:11434",
+				OllamaModel: "qwen2.5-coder:3b",
+			}}
 		}
-		return APIKeyLoadedMsg{Key: cfg.APIKey}
+		return ConfigLoadedMsg{Config: cfg}
 	}
 }
 
-// SaveAPIKey saves the API key to the config file.
-func SaveAPIKey(key string) tea.Cmd {
+// SaveConfig saves the configuration to the config file.
+func SaveConfig(cfg *config.Config) tea.Cmd {
 	return func() tea.Msg {
-		cfg := &config.Config{APIKey: key}
 		if err := config.Save(cfg); err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to save config: %w", err)}
 		}
@@ -50,11 +53,11 @@ func ReadGitDiff() tea.Cmd {
 	}
 }
 
-// GenerateCommit generates a commit message using the AI.
-func GenerateCommit(apiKey, diff string) tea.Cmd {
+// GenerateCommit generates a commit message using the AI provider.
+func GenerateCommit(provider ai.Provider, diff string) tea.Cmd {
 	return func() tea.Msg {
 		ctx := context.Background()
-		commitMsg, err := ai.GenerateCommitMessage(ctx, apiKey, diff)
+		commitMsg, err := provider.GenerateCommitMessage(ctx, diff)
 		if err != nil {
 			return ErrorMsg{Err: err}
 		}
