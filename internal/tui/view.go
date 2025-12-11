@@ -71,11 +71,83 @@ func (m Model) View() string {
 		s.WriteString("\n")
 		s.WriteString(HelpStyle.Render("Press Enter to continue"))
 
+	case StateSelectFiles:
+		s.WriteString(WarningStyle.Render("No staged changes found."))
+		s.WriteString("\n\n")
+		s.WriteString(InfoStyle.Render("Select files to stage:"))
+		s.WriteString("\n\n")
+
+		allFiles := m.GetAllFiles()
+		fileIdx := 0
+
+		// Show modified files
+		if len(m.UnstagedFiles) > 0 {
+			s.WriteString(HelpStyle.Render("Modified/Deleted:"))
+			s.WriteString("\n")
+			for _, file := range m.UnstagedFiles {
+				checkbox := "[ ]"
+				if m.SelectedFiles[fileIdx] {
+					checkbox = "[x]"
+				}
+				cursor := "  "
+				if fileIdx == m.SelectedItem {
+					cursor = SelectedMenuItemStyle.Render("→ ")
+				}
+				statusLabel := ""
+				if file.Status == "deleted" {
+					statusLabel = ErrorStyle.Render(" (deleted)")
+				} else if file.Status == "renamed" {
+					statusLabel = WarningStyle.Render(" (renamed)")
+				}
+				s.WriteString(fmt.Sprintf("%s%s %s%s\n", cursor, checkbox, file.Path, statusLabel))
+				fileIdx++
+			}
+			s.WriteString("\n")
+		}
+
+		// Show untracked files
+		if len(m.UntrackedFiles) > 0 {
+			s.WriteString(HelpStyle.Render("Untracked:"))
+			s.WriteString("\n")
+			for _, file := range m.UntrackedFiles {
+				checkbox := "[ ]"
+				if m.SelectedFiles[fileIdx] {
+					checkbox = "[x]"
+				}
+				cursor := "  "
+				if fileIdx == m.SelectedItem {
+					cursor = SelectedMenuItemStyle.Render("→ ")
+				}
+				s.WriteString(fmt.Sprintf("%s%s %s\n", cursor, checkbox, file.Path))
+				fileIdx++
+			}
+			s.WriteString("\n")
+		}
+
+		// Count selected files
+		selectedCount := 0
+		for i := 0; i < len(allFiles); i++ {
+			if m.SelectedFiles[i] {
+				selectedCount++
+			}
+		}
+		s.WriteString(InfoStyle.Render(fmt.Sprintf("Selected: %d/%d files", selectedCount, len(allFiles))))
+		s.WriteString("\n\n")
+		s.WriteString(HelpStyle.Render("↑/↓ navigate • Space toggle • a toggle all • Enter stage and continue • q quit"))
+
+	case StateStaging:
+		s.WriteString(m.Spinner.View())
+		s.WriteString(InfoStyle.Render(" Staging selected files..."))
+
 	case StateGenerating:
 		s.WriteString(m.Spinner.View())
 		s.WriteString(InfoStyle.Render(" Analyzing your changes and generating commit message..."))
 		s.WriteString("\n")
 		s.WriteString(HelpStyle.Render("This may take a few seconds"))
+
+	case StatePushing:
+		s.WriteString(m.Spinner.View())
+		s.WriteString(InfoStyle.Render(" Pushing to remote repository..."))
 
 	case StateShowResult:
 		s.WriteString(SuccessStyle.Render("Commit message generated!"))
@@ -112,10 +184,15 @@ func (m Model) View() string {
 	case StateSuccess:
 		s.WriteString(SuccessStyle.Render("Success!"))
 		s.WriteString("\n\n")
-		if m.SelectedItem == 0 {
+		switch m.SuccessAction {
+		case "copy":
 			s.WriteString(InfoStyle.Render("Commit message copied to clipboard"))
-		} else if m.SelectedItem == 1 {
+		case "commit":
 			s.WriteString(InfoStyle.Render("Commit executed successfully"))
+		case "commit_and_push":
+			s.WriteString(InfoStyle.Render("Commit executed and pushed to remote successfully"))
+		default:
+			s.WriteString(InfoStyle.Render("Operation completed successfully"))
 		}
 		s.WriteString("\n\n")
 		s.WriteString(HelpStyle.Render("Press Enter or q to exit"))

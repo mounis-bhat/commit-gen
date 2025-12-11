@@ -18,7 +18,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "ctrl+c", "q":
-			if m.State != StateInputKey {
+			if m.State != StateInputKey && m.State != StateSelectFiles {
+				return m, tea.Quit
+			}
+			if m.State == StateSelectFiles {
 				return m, tea.Quit
 			}
 		case "enter":
@@ -56,6 +59,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					OllamaURL:   "http://localhost:11434",
 					OllamaModel: model,
 				}
+				m.OllamaModel = model
 				m.State = StateGenerating
 				return m, tea.Batch(
 					SaveConfig(cfg),
@@ -69,6 +73,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.APIKey = key
 				m.State = StateGenerating
 				return m, ReadGitDiff()
+			case StateSelectFiles:
+				// Stage selected files and proceed
+				selectedPaths := m.GetSelectedFilePaths()
+				if len(selectedPaths) == 0 {
+					return m, nil // No files selected
+				}
+				m.State = StateStaging
+				return m, StageSelectedFiles(selectedPaths)
 			case StateShowResult:
 				return m.handleMenuSelection()
 			case StateError:
@@ -92,6 +104,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if m.SelectedItem < 0 {
 					m.SelectedItem = len(m.MenuItems) - 1
 				}
+			} else if m.State == StateSelectFiles {
+				allFiles := m.GetAllFiles()
+				m.SelectedItem--
+				if m.SelectedItem < 0 {
+					m.SelectedItem = len(allFiles) - 1
+				}
 			}
 		case "down", "j":
 			if m.State == StateSelectProvider {
@@ -108,6 +126,31 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.SelectedItem++
 				if m.SelectedItem >= len(m.MenuItems) {
 					m.SelectedItem = 0
+				}
+			} else if m.State == StateSelectFiles {
+				allFiles := m.GetAllFiles()
+				m.SelectedItem++
+				if m.SelectedItem >= len(allFiles) {
+					m.SelectedItem = 0
+				}
+			}
+		case " ": // Space to toggle file selection
+			if m.State == StateSelectFiles {
+				m.SelectedFiles[m.SelectedItem] = !m.SelectedFiles[m.SelectedItem]
+			}
+		case "a": // Select all files
+			if m.State == StateSelectFiles {
+				allFiles := m.GetAllFiles()
+				allSelected := true
+				for i := 0; i < len(allFiles); i++ {
+					if !m.SelectedFiles[i] {
+						allSelected = false
+						break
+					}
+				}
+				// Toggle all: if all selected, deselect all; otherwise select all
+				for i := 0; i < len(allFiles); i++ {
+					m.SelectedFiles[i] = !allSelected
 				}
 			}
 		case "1":
@@ -128,6 +171,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "4":
 			if m.State == StateShowResult {
 				m.SelectedItem = 3
+				return m.handleMenuSelection()
+			}
+		case "5":
+			if m.State == StateShowResult {
+				m.SelectedItem = 4
 				return m.handleMenuSelection()
 			}
 		}
@@ -159,6 +207,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case DiffReadyMsg:
 		m.Diff = msg.Diff
+		// Check if diff is empty - need to show file picker
+		if strings.TrimSpace(msg.Diff) == "" {
+			// No staged changes, fetch available files
+			return m, ReadAvailableFiles()
+		}
 		provider, err := ai.NewProvider(&config.Config{
 			Provider:    m.Provider,
 			APIKey:      m.APIKey,
@@ -170,6 +223,25 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, GenerateCommit(provider, m.Diff)
 
+	case FilesReadyMsg:
+		m.UnstagedFiles = msg.Unstaged
+		m.UntrackedFiles = msg.Untracked
+		// Check if there are any files to stage
+		if len(msg.Unstaged) == 0 && len(msg.Untracked) == 0 {
+			return m, func() tea.Msg {
+				return ErrorMsg{Err: fmt.Errorf("no changes detected. Nothing to commit")}
+			}
+		}
+		m.State = StateSelectFiles
+		m.SelectedItem = 0
+		m.SelectedFiles = make(map[int]bool)
+		return m, nil
+
+	case FilesStagedMsg:
+		// Files staged successfully, now read the diff
+		m.State = StateGenerating
+		return m, ReadGitDiff()
+
 	case CommitGeneratedMsg:
 		m.CommitMsg = msg.Commit
 		// Save config after successful generation
@@ -180,9 +252,21 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			OllamaModel: m.OllamaModel,
 		}
 		m.State = StateShowResult
+		m.SelectedItem = 0
 		return m, SaveConfig(cfg)
 
 	case CommitExecutedMsg:
+		// Check if we should also push
+		if m.SuccessAction == "commit_and_push" {
+			m.State = StatePushing
+			return m, ExecutePush()
+		}
+		m.SuccessAction = "commit"
+		m.State = StateSuccess
+		return m, nil
+
+	case PushExecutedMsg:
+		m.SuccessAction = "commit_and_push"
 		m.State = StateSuccess
 		return m, nil
 
@@ -218,12 +302,17 @@ func (m Model) handleMenuSelection() (tea.Model, tea.Cmd) {
 			m.Err = fmt.Errorf("failed to copy: %w", err)
 			m.State = StateError
 		} else {
+			m.SuccessAction = "copy"
 			m.State = StateSuccess
 		}
 		return m, nil
 	case 1: // Execute commit
+		m.SuccessAction = "commit"
 		return m, ExecuteCommit(m.CommitMsg)
-	case 2: // Regenerate
+	case 2: // Execute commit and push
+		m.SuccessAction = "commit_and_push"
+		return m, ExecuteCommit(m.CommitMsg)
+	case 3: // Regenerate
 		m.State = StateGenerating
 		m.SelectedItem = 0
 		provider, err := ai.NewProvider(&config.Config{
@@ -236,7 +325,7 @@ func (m Model) handleMenuSelection() (tea.Model, tea.Cmd) {
 			return m, func() tea.Msg { return ErrorMsg{Err: err} }
 		}
 		return m, GenerateCommit(provider, m.Diff)
-	case 3: // Quit
+	case 4: // Quit
 		return m, tea.Quit
 	}
 	return m, nil
