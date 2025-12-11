@@ -1,0 +1,5 @@
+# Build output
+bin/
+
+# Binary (in case it's built in root)
+git-commit-generator

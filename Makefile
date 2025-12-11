@@ -1,32 +1,29 @@
-.PHONY: build clean run help
+.PHONY: build clean run help install install-home
 
 BINARY_NAME=git-commit-generator
+BUILD_DIR=bin
 GO=go
 
 help:
 	@echo "Available commands:"
-	@echo "  make build       - Build the binary"
-	@echo "  make clean       - Remove the binary"
-	@echo "  make run         - Run with: make run API_KEY=your_key"
-	@echo "  make install     - Build and install to /usr/local/bin"
-	@echo "  make to-bin      - Build and move binary to ./bin/"
+	@echo "  make build        - Build the binary to $(BUILD_DIR)/"
+	@echo "  make clean        - Remove the build directory"
+	@echo "  make run          - Run with: make run API_KEY=your_key"
+	@echo "  make install      - Build and install to /usr/local/bin"
+	@echo "  make install-home - Build and install to ~/bin"
 
 build:
-	$(GO) build -o $(BINARY_NAME) main.go
+	@mkdir -p $(BUILD_DIR)
+	$(GO) build -o $(BUILD_DIR)/$(BINARY_NAME) ./cmd/commit-gen
 
 clean:
-	rm -f $(BINARY_NAME)
+	rm -rf $(BUILD_DIR)
 
 run: build
-	./$(BINARY_NAME) $(API_KEY)
+	./$(BUILD_DIR)/$(BINARY_NAME) $(API_KEY)
 
 install: build
-	sudo mv $(BINARY_NAME) /usr/local/bin/
-
-to-bin: build
-	mkdir -p bin && mv $(BINARY_NAME) bin/
+	sudo cp $(BUILD_DIR)/$(BINARY_NAME) /usr/local/bin/
 
 install-home: build
-	mkdir -p $(HOME)/bin && mv $(BINARY_NAME) $(HOME)/bin/
-
-.PHONY: build clean run help install to-bin install-home
+	mkdir -p $(HOME)/bin && cp $(BUILD_DIR)/$(BINARY_NAME) $(HOME)/bin/
