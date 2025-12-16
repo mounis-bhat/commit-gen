@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"runtime"
+	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
 
@@ -138,9 +139,45 @@ func GenerateCommit(provider ai.Provider, diff string) tea.Cmd {
 	}
 }
 
-// ExecuteCommit executes the generated commit command.
+// ExecuteCommit executes the generated commit message.
 func ExecuteCommit(commitMsg string) tea.Cmd {
 	return func() tea.Msg {
+		// Parse commit message lines
+		lines := strings.Split(strings.TrimSpace(commitMsg), "\n")
+		var nonEmptyLines []string
+		for _, line := range lines {
+			line = strings.TrimSpace(line)
+			if line != "" {
+				nonEmptyLines = append(nonEmptyLines, line)
+			}
+		}
+
+		if len(nonEmptyLines) == 0 {
+			return ErrorMsg{Err: fmt.Errorf("no commit message lines found")}
+		}
+
+		var cmdStr string
+		if runtime.GOOS == "windows" {
+			// Windows: single line with multiple -m flags
+			var args []string
+			for _, line := range nonEmptyLines {
+				args = append(args, fmt.Sprintf(`-m "%s"`, strings.ReplaceAll(line, `"`, `\"`)))
+			}
+			cmdStr = fmt.Sprintf("git commit %s", strings.Join(args, " "))
+		} else {
+			// POSIX: multiline with backslash continuation
+			var parts []string
+			parts = append(parts, "git commit \\")
+			for _, line := range nonEmptyLines {
+				parts = append(parts, fmt.Sprintf(`-m "%s" \\`, strings.ReplaceAll(line, `"`, `\"`)))
+			}
+			// Remove the trailing backslash from the last line
+			if len(parts) > 1 {
+				parts[len(parts)-1] = strings.TrimSuffix(parts[len(parts)-1], " \\")
+			}
+			cmdStr = strings.Join(parts, "\n")
+		}
+
 		var shell, arg string
 		if runtime.GOOS == "windows" {
 			shell = "cmd"
@@ -149,7 +186,8 @@ func ExecuteCommit(commitMsg string) tea.Cmd {
 			shell = "bash"
 			arg = "-c"
 		}
-		cmd := exec.Command(shell, arg, commitMsg)
+
+		cmd := exec.Command(shell, arg, cmdStr)
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
 

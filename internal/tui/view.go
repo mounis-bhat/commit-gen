@@ -463,7 +463,8 @@ func (m Model) viewShowResult() string {
 
 	// Commit message in a styled box
 	commitBox := GetCommitBoxStyle(width)
-	s.WriteString(commitBox.Render(m.CommitMsg))
+	formattedMsg := m.formatCommitMessage()
+	s.WriteString(commitBox.Render(formattedMsg))
 	s.WriteString("\n\n")
 
 	// Action menu
@@ -584,3 +585,16 @@ func (m Model) viewSuccess() string {
 
 // FileStatus is imported from git package, but we need a local reference for the view
 type FileStatus = git.FileStatus
+
+// formatCommitMessage formats the raw commit message lines into a readable display format
+func (m Model) formatCommitMessage() string {
+	lines := strings.Split(strings.TrimSpace(m.CommitMsg), "\n")
+	var formatted []string
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line != "" {
+			formatted = append(formatted, line)
+		}
+	}
+	return strings.Join(formatted, "\n")
+}
