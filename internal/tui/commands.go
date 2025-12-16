@@ -156,27 +156,9 @@ func ExecuteCommit(commitMsg string) tea.Cmd {
 			return ErrorMsg{Err: fmt.Errorf("no commit message lines found")}
 		}
 
-		var cmdStr string
-		if runtime.GOOS == "windows" {
-			// Windows: single line with multiple -m flags
-			var args []string
-			for _, line := range nonEmptyLines {
-				args = append(args, fmt.Sprintf(`-m "%s"`, strings.ReplaceAll(line, `"`, `\"`)))
-			}
-			cmdStr = fmt.Sprintf("git commit %s", strings.Join(args, " "))
-		} else {
-			// POSIX: multiline with backslash continuation
-			var parts []string
-			parts = append(parts, "git commit \\")
-			for _, line := range nonEmptyLines {
-				parts = append(parts, fmt.Sprintf(`-m "%s" \\`, strings.ReplaceAll(line, `"`, `\"`)))
-			}
-			// Remove the trailing backslash from the last line
-			if len(parts) > 1 {
-				parts[len(parts)-1] = strings.TrimSuffix(parts[len(parts)-1], " \\")
-			}
-			cmdStr = strings.Join(parts, "\n")
-		}
+		// Join all lines with newlines for a single -m flag
+		fullMsg := strings.Join(nonEmptyLines, "\n")
+		cmdStr := fmt.Sprintf(`git commit -m "%s"`, strings.ReplaceAll(fullMsg, `"`, `\"`))
 
 		var shell, arg string
 		if runtime.GOOS == "windows" {
