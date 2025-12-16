@@ -1,22 +1,12 @@
 package providers
 
-import (
-	"os"
-)
-
 const (
-	// ModelName is the Gemini model to use for generation.
-	ModelName = "gemini-2.5-flash"
-	// MaxDiffSize is the maximum size of diff to send to the API.
+	ModelName   = "gemini-2.5-flash"
 	MaxDiffSize = 8000
 )
 
 // GetOSAwarePrompt returns the system prompt based on the operating system
 func GetOSAwarePrompt(targetOS string) string {
-	// Allow mocking for testing
-	if mockOS := os.Getenv("COMMIT_GEN_FORCE_WINDOWS_MODE"); mockOS == "1" {
-		targetOS = "windows"
-	}
 
 	basePrompt := `You are an expert at writing clear, structured git commit messages following the Conventional Commits standard with emojis.
 

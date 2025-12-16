@@ -131,11 +131,7 @@ func ExecutePush() tea.Cmd {
 func GenerateCommit(provider ai.Provider, diff string) tea.Cmd {
 	return func() tea.Msg {
 		ctx := context.Background()
-		osName := runtime.GOOS
-		if os.Getenv("COMMIT_GEN_FORCE_WINDOWS_MODE") == "1" {
-			osName = "windows"
-		}
-		commitMsg, err := provider.GenerateCommitMessage(ctx, diff, osName)
+		commitMsg, err := provider.GenerateCommitMessage(ctx, diff, runtime.GOOS)
 		if err != nil {
 			return ErrorMsg{Err: err}
 		}
