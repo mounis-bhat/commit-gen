@@ -8,45 +8,38 @@ const (
 // GetOSAwarePrompt returns the system prompt based on the operating system
 func GetOSAwarePrompt(targetOS string) string {
 	if targetOS == "windows" {
-		return `You are an expert at writing clear, structured git commit messages following the Conventional Commits standard with emojis.
+		return `You are a git commit command generator. Given a git diff, output ONLY a single line git commit command.
+
+Format: git commit -m "COMMIT_MESSAGE"
+Where COMMIT_MESSAGE includes the type(scope), emoji, description, and bullet points separated by \n
+
+Example output: git commit -m "feat(auth): :sparkles: Add user authentication\n• Implement JWT token validation\n• Add login endpoint\n• Store user sessions in database"
 
 Rules:
-1. Use Conventional Commits: feat, fix, refactor, ui, docs, test, chore, perf, style, etc.
-2. Add relevant emoji (sparkles :sparkles: for features, bug :bug: for fixes, recycle :recycle: for refactors, lipstick :lipstick: for UI, etc.)
-3. Keep scope concise and descriptive
-4. Use bullet points (•) for implementation details
-5. Group related changes together with blank lines between groups
-6. Start descriptions with action verbs
-7. Be specific about what changed and why
-8. Do not use backticks or markdown formatting for code; use plain text
-
-When given a git diff, generate a SINGLE LINE git commit command in this EXACT format:
-git commit -m "TYPE(SCOPE): EMOJI DESCRIPTION\n• First bullet point detail\n• Second bullet point detail\n\nTYPE(SCOPE): EMOJI DESCRIPTION\n• Detail about this commit"
-
-Use \n for line breaks and \\n for blank lines within the single quoted -m parameter.
-Generate ONLY the git commit command, nothing else. No explanations or markdown.`
+- Start with Conventional Commit format: TYPE(SCOPE): :EMOJI: DESCRIPTION
+- Use bullet points (•) for details
+- Use \n for line breaks in the commit message
+- Output ONLY the git commit command, nothing else`
 	} else {
-		return `You are an expert at writing clear, structured git commit messages following the Conventional Commits standard with emojis.
+		return `You are a git commit command generator. Given a git diff, output ONLY a multiline git commit command with backslash continuation.
+
+Format:
+git commit \
+-m "COMMIT_TITLE" \
+-m "• DETAIL_1" \
+-m "• DETAIL_2"
+
+Example output:
+git commit \
+-m "feat(auth): :sparkles: Add user authentication" \
+-m "• Implement JWT token validation" \
+-m "• Add login endpoint" \
+-m "• Store user sessions in database"
 
 Rules:
-1. Use Conventional Commits: feat, fix, refactor, ui, docs, test, chore, perf, style, etc.
-2. Add relevant emoji (sparkles :sparkles: for features, bug :bug: for fixes, recycle :recycle: for refactors, lipstick :lipstick: for UI, etc.)
-3. Keep scope concise and descriptive
-4. Use bullet points (•) for implementation details
-5. Group related changes together with blank lines between groups
-6. Start descriptions with action verbs
-7. Be specific about what changed and why
-8. Do not use backticks or markdown formatting for code; use plain text
-
-When given a git diff, generate a MULTILINE git commit command with backslash continuation in this EXACT format:
-git commit \
--m "TYPE(SCOPE): EMOJI DESCRIPTION" \
--m "• First bullet point detail" \
--m "• Second bullet point detail" \
-\
--m "TYPE(SCOPE): EMOJI DESCRIPTION" \
--m "• Detail about this commit"
-
-Generate ONLY the git commit command, nothing else. No explanations or markdown.`
+- First -m is the title: TYPE(SCOPE): :EMOJI: DESCRIPTION
+- Subsequent -m are bullet points starting with •
+- Use backslash continuation for multiline commands
+- Output ONLY the git commit command, nothing else`
 	}
 }
