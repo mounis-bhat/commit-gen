@@ -22,13 +22,13 @@ An interactive CLI tool that generates structured git commit messages using Goog
 ### Linux / macOS
 
 ```bash
-curl -sSfL https://raw.githubusercontent.com/mounis-bhat/commit-gen/main/install.sh | sh
+curl -sSfL https://raw.githubusercontent.com/mounis-bhat/commit-gen/trunk/install.sh | sh
 ```
 
 ### Windows (PowerShell)
 
 ```powershell
-irm https://raw.githubusercontent.com/mounis-bhat/commit-gen/main/install.ps1 | iex
+irm https://raw.githubusercontent.com/mounis-bhat/commit-gen/trunk/install.ps1 | iex
 ```
 
 ### From Source (requires Go 1.21+)

@@ -1,6 +1,6 @@
 #!/bin/sh
 # commit-gen installer for Linux and macOS
-# Usage: curl -sSfL https://raw.githubusercontent.com/mounis-bhat/commit-gen/main/install.sh | sh
+# Usage: curl -sSfL https://raw.githubusercontent.com/mounis-bhat/commit-gen/trunk/install.sh | sh
 
 set -e
 

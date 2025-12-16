@@ -1,5 +1,5 @@
 # commit-gen installer for Windows
-# Usage: irm https://raw.githubusercontent.com/mounis-bhat/commit-gen/main/install.ps1 | iex
+# Usage: irm https://raw.githubusercontent.com/mounis-bhat/commit-gen/trunk/install.ps1 | iex
 
 $ErrorActionPreference = "Stop"
 

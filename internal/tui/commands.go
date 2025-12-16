@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"runtime"
 
 	tea "github.com/charmbracelet/bubbletea"
 
@@ -140,7 +141,15 @@ func GenerateCommit(provider ai.Provider, diff string) tea.Cmd {
 // ExecuteCommit executes the generated commit command.
 func ExecuteCommit(commitMsg string) tea.Cmd {
 	return func() tea.Msg {
-		cmd := exec.Command("bash", "-c", commitMsg)
+		var shell, arg string
+		if runtime.GOOS == "windows" {
+			shell = "cmd"
+			arg = "/c"
+		} else {
+			shell = "bash"
+			arg = "-c"
+		}
+		cmd := exec.Command(shell, arg, commitMsg)
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
 
