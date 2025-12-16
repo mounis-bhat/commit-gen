@@ -1,5 +1,6 @@
 # Build output
 bin/
+dist/
 
 # Binary (in case it's built in root)
 git-commit-generator

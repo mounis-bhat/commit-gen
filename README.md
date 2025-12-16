@@ -14,40 +14,48 @@ An interactive CLI tool that generates structured git commit messages using Goog
 
 ## Requirements
 
-- Go 1.21 or later
-- Google Gemini API key
+- Git installed and available in PATH
+- Google Gemini API key (or Ollama for local inference)
 
 ## Installation
 
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/mounis-bhat/commit-gen.git
-   cd commit-gen
-   ```
+### Linux / macOS
 
-2. Install dependencies:
-   ```bash
-   go mod tidy
-   ```
+```bash
+curl -sSfL https://raw.githubusercontent.com/mounis-bhat/commit-gen/main/install.sh | sh
+```
 
-3. Build the binary:
-   ```bash
-   make build
-   ```
+### Windows (PowerShell)
 
-   Or install globally:
-   ```bash
-   make install
-   ```
+```powershell
+irm https://raw.githubusercontent.com/mounis-bhat/commit-gen/main/install.ps1 | iex
+```
+
+### From Source (requires Go 1.21+)
+
+```bash
+go install github.com/mounis-bhat/commit-gen/cmd/commit-gen@latest
+```
+
+Or clone and build manually:
+
+```bash
+git clone https://github.com/mounis-bhat/commit-gen.git
+cd commit-gen
+make build
+# Binary will be in ./bin/commit-gen
+```
 
 ## Usage
 
 1. Stage your changes:
+
    ```bash
    git add .
    ```
 
 2. Run the tool:
+
    ```bash
    commit-gen
    ```
@@ -78,16 +86,30 @@ The API key is stored in `~/.commit-gen-config.json` and is only requested once.
 The tool generates commit commands like:
 
 ```bash
-git commit -m "feat(auth): 🔐 Add user authentication" \
+git commit -m "feat(auth): Add user authentication" \
 -m "• Implement JWT token generation" \
 -m "• Add login/logout endpoints" \
 -m "• Validate user credentials against database"
 ```
 
 ```bash
-git commit -m "fix(api): 🐛 Handle null pointer in user service" \
+git commit -m "fix(api): Handle null pointer in user service" \
 -m "• Add nil checks in UserService.GetUser()" \
 -m "• Return appropriate error responses"
+```
+
+## Uninstall
+
+### Linux / macOS
+
+```bash
+rm ~/.local/bin/commit-gen
+```
+
+### Windows
+
+```powershell
+Remove-Item "$env:USERPROFILE\.local\bin\commit-gen.exe"
 ```
 
 ## License
