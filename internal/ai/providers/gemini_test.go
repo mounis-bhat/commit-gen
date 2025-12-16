@@ -49,7 +49,7 @@ func TestGeminiGenerateCommitMessage(t *testing.T) {
 		ctx := context.Background()
 
 		// This will fail due to invalid API key, but we can test the error handling
-		_, err := provider.GenerateCommitMessage(ctx, "test diff")
+		_, err := provider.GenerateCommitMessage(ctx, "test diff", "linux")
 		if err == nil {
 			t.Error("expected error with invalid API key")
 		}
@@ -59,7 +59,7 @@ func TestGeminiGenerateCommitMessage(t *testing.T) {
 		provider, _ := NewGeminiProvider("")
 		ctx := context.Background()
 
-		_, err := provider.GenerateCommitMessage(ctx, "test diff")
+		_, err := provider.GenerateCommitMessage(ctx, "test diff", "linux")
 		if err == nil {
 			t.Error("expected error with empty API key")
 		}
@@ -70,7 +70,7 @@ func TestGeminiGenerateCommitMessage(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 		cancel() // Cancel immediately
 
-		_, err := provider.GenerateCommitMessage(ctx, "test diff")
+		_, err := provider.GenerateCommitMessage(ctx, "test diff", "linux")
 		if err == nil {
 			t.Error("expected error for cancelled context")
 		}
@@ -80,7 +80,7 @@ func TestGeminiGenerateCommitMessage(t *testing.T) {
 		provider, _ := NewGeminiProvider("invalid-key")
 		ctx := context.Background()
 
-		_, err := provider.GenerateCommitMessage(ctx, "")
+		_, err := provider.GenerateCommitMessage(ctx, "", "linux")
 		if err == nil {
 			t.Error("expected error with empty diff")
 		}
@@ -110,9 +110,10 @@ func TestGeminiConstants(t *testing.T) {
 		}
 	})
 
-	t.Run("SystemPrompt is not empty", func(t *testing.T) {
-		if SystemPrompt == "" {
-			t.Error("SystemPrompt should not be empty")
+	t.Run("GetOSAwarePrompt works", func(t *testing.T) {
+		prompt := GetOSAwarePrompt("linux")
+		if prompt == "" {
+			t.Error("GetOSAwarePrompt should not be empty")
 		}
 	})
 }

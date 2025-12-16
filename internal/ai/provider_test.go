@@ -1,8 +1,10 @@
 package ai
 
 import (
+	"strings"
 	"testing"
 
+	"github.com/mounis-bhat/commit-gen/internal/ai/providers"
 	"github.com/mounis-bhat/commit-gen/internal/config"
 )
 
@@ -152,32 +154,43 @@ func TestProviderInterface(t *testing.T) {
 	})
 }
 
-// TestSystemPrompt tests that the system prompt is defined
-func TestSystemPrompt(t *testing.T) {
-	t.Run("system prompt is not empty", func(t *testing.T) {
-		if SystemPrompt == "" {
-			t.Error("SystemPrompt should not be empty")
+// TestOSAwarePrompt tests that OS-aware prompts are generated
+func TestOSAwarePrompt(t *testing.T) {
+	t.Run("windows prompt contains single line", func(t *testing.T) {
+		prompt := providers.GetOSAwarePrompt("windows")
+		if !strings.Contains(prompt, "SINGLE LINE") {
+			t.Error("Windows prompt should mention SINGLE LINE")
 		}
 	})
 
-	t.Run("system prompt contains conventional commits", func(t *testing.T) {
-		if !containsString(SystemPrompt, "Conventional Commits") {
-			t.Error("SystemPrompt should mention Conventional Commits")
+	t.Run("posix prompt contains multiline", func(t *testing.T) {
+		prompt := providers.GetOSAwarePrompt("linux")
+		if !strings.Contains(prompt, "MULTILINE") {
+			t.Error("POSIX prompt should mention MULTILINE")
 		}
 	})
 
-	t.Run("system prompt contains commit types", func(t *testing.T) {
+	t.Run("prompt contains conventional commits", func(t *testing.T) {
+		prompt := providers.GetOSAwarePrompt("linux")
+		if !containsString(prompt, "Conventional Commits") {
+			t.Error("Prompt should mention Conventional Commits")
+		}
+	})
+
+	t.Run("prompt contains commit types", func(t *testing.T) {
+		prompt := providers.GetOSAwarePrompt("linux")
 		expectedTypes := []string{"feat", "fix", "refactor"}
 		for _, typ := range expectedTypes {
-			if !containsString(SystemPrompt, typ) {
-				t.Errorf("SystemPrompt should contain commit type '%s'", typ)
+			if !containsString(prompt, typ) {
+				t.Errorf("Prompt should contain commit type '%s'", typ)
 			}
 		}
 	})
 
 	t.Run("system prompt mentions emojis", func(t *testing.T) {
-		if !containsString(SystemPrompt, "emoji") {
-			t.Error("SystemPrompt should mention emojis")
+		prompt := providers.GetOSAwarePrompt("linux")
+		if !containsString(prompt, "emoji") {
+			t.Error("Prompt should mention emojis")
 		}
 	})
 }

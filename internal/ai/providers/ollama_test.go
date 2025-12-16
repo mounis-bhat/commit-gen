@@ -116,7 +116,7 @@ func TestOllamaGenerateCommitMessage(t *testing.T) {
 		provider, _ := NewOllamaProvider(server.URL, "test-model")
 		ctx := context.Background()
 
-		result, err := provider.GenerateCommitMessage(ctx, "diff --git a/test.go")
+		result, err := provider.GenerateCommitMessage(ctx, "diff --git a/test.go", "linux")
 		if err != nil {
 			t.Fatalf("GenerateCommitMessage failed: %v", err)
 		}
@@ -148,7 +148,7 @@ func TestOllamaGenerateCommitMessage(t *testing.T) {
 		// Create a diff larger than MaxDiffSize
 		largeDiff := strings.Repeat("a", MaxDiffSize+1000)
 
-		_, err := provider.GenerateCommitMessage(ctx, largeDiff)
+		_, err := provider.GenerateCommitMessage(ctx, largeDiff, "linux")
 		if err != nil {
 			t.Fatalf("GenerateCommitMessage failed: %v", err)
 		}
@@ -168,7 +168,7 @@ func TestOllamaGenerateCommitMessage(t *testing.T) {
 		provider, _ := NewOllamaProvider(server.URL, "test-model")
 		ctx := context.Background()
 
-		_, err := provider.GenerateCommitMessage(ctx, "test diff")
+		_, err := provider.GenerateCommitMessage(ctx, "test diff", "linux")
 		// The error might come from JSON parsing the empty response
 		if err == nil {
 			t.Error("expected error for HTTP error response")
@@ -179,7 +179,7 @@ func TestOllamaGenerateCommitMessage(t *testing.T) {
 		provider, _ := NewOllamaProvider("http://localhost:99999", "test-model")
 		ctx := context.Background()
 
-		_, err := provider.GenerateCommitMessage(ctx, "test diff")
+		_, err := provider.GenerateCommitMessage(ctx, "test diff", "linux")
 		if err == nil {
 			t.Error("expected error for connection failure")
 		}
@@ -198,7 +198,7 @@ func TestOllamaGenerateCommitMessage(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 		cancel() // Cancel immediately
 
-		_, err := provider.GenerateCommitMessage(ctx, "test diff")
+		_, err := provider.GenerateCommitMessage(ctx, "test diff", "linux")
 		if err == nil {
 			t.Error("expected error for cancelled context")
 		}
@@ -213,7 +213,7 @@ func TestOllamaGenerateCommitMessage(t *testing.T) {
 		provider, _ := NewOllamaProvider(server.URL, "test-model")
 		ctx := context.Background()
 
-		_, err := provider.GenerateCommitMessage(ctx, "test diff")
+		_, err := provider.GenerateCommitMessage(ctx, "test diff", "linux")
 		if err == nil {
 			t.Error("expected error for malformed JSON")
 		}
@@ -237,7 +237,7 @@ func TestOllamaGenerateCommitMessage(t *testing.T) {
 		ctx := context.Background()
 
 		testDiff := "diff --git a/main.go b/main.go\n+func main() {}"
-		provider.GenerateCommitMessage(ctx, testDiff)
+		provider.GenerateCommitMessage(ctx, testDiff, "linux")
 
 		if !strings.Contains(receivedPrompt, testDiff) {
 			t.Errorf("prompt should contain the diff, got: %s", receivedPrompt)
@@ -352,9 +352,10 @@ func TestOllamaConstants(t *testing.T) {
 		}
 	})
 
-	t.Run("SystemPrompt is not empty", func(t *testing.T) {
-		if SystemPrompt == "" {
-			t.Error("SystemPrompt should not be empty")
+	t.Run("GetOSAwarePrompt works", func(t *testing.T) {
+		prompt := GetOSAwarePrompt("linux")
+		if prompt == "" {
+			t.Error("GetOSAwarePrompt should not be empty")
 		}
 	})
 }

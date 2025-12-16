@@ -41,16 +41,17 @@ func NewOllamaProvider(baseURL, model string) (*OllamaProvider, error) {
 	return &OllamaProvider{baseURL: baseURL, model: model}, nil
 }
 
-func (p *OllamaProvider) GenerateCommitMessage(ctx context.Context, diff string) (string, error) {
+func (p *OllamaProvider) GenerateCommitMessage(ctx context.Context, diff string, os string) (string, error) {
 	// Limit diff size to avoid token limits
 	if len(diff) > MaxDiffSize {
 		diff = diff[:MaxDiffSize] + "\n... (diff truncated)"
 	}
 
+	systemPrompt := GetOSAwarePrompt(os)
 	reqBody := ollamaRequest{
 		Model:  p.model,
 		Prompt: fmt.Sprintf("Analyze this git diff and generate a properly formatted commit message:\n\n```\n%s\n```", diff),
-		System: SystemPrompt,
+		System: systemPrompt,
 		Stream: false,
 	}
 

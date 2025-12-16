@@ -16,7 +16,7 @@ func NewGeminiProvider(apiKey string) (*GeminiProvider, error) {
 	return &GeminiProvider{apiKey: apiKey}, nil
 }
 
-func (p *GeminiProvider) GenerateCommitMessage(ctx context.Context, diff string) (string, error) {
+func (p *GeminiProvider) GenerateCommitMessage(ctx context.Context, diff string, os string) (string, error) {
 	client, err := genai.NewClient(ctx, &genai.ClientConfig{
 		APIKey:  p.apiKey,
 		Backend: genai.BackendGeminiAPI,
@@ -30,6 +30,7 @@ func (p *GeminiProvider) GenerateCommitMessage(ctx context.Context, diff string)
 		diff = diff[:MaxDiffSize] + "\n... (diff truncated)"
 	}
 
+	systemPrompt := GetOSAwarePrompt(os)
 	prompt := fmt.Sprintf("Analyze this git diff and generate a properly formatted commit message:\n\n```\n%s\n```", diff)
 
 	response, err := client.Models.GenerateContent(
@@ -37,7 +38,7 @@ func (p *GeminiProvider) GenerateCommitMessage(ctx context.Context, diff string)
 		ModelName,
 		[]*genai.Content{genai.NewContentFromText(prompt, genai.RoleUser)},
 		&genai.GenerateContentConfig{
-			SystemInstruction: genai.NewContentFromText(SystemPrompt, genai.RoleUser),
+			SystemInstruction: genai.NewContentFromText(systemPrompt, genai.RoleUser),
 		},
 	)
 	if err != nil {

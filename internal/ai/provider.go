@@ -10,7 +10,7 @@ import (
 
 // Provider defines the interface that all AI providers must implement
 type Provider interface {
-	GenerateCommitMessage(ctx context.Context, diff string) (string, error)
+	GenerateCommitMessage(ctx context.Context, diff string, os string) (string, error)
 	Name() string
 }
 
