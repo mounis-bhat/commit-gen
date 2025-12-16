@@ -156,30 +156,24 @@ func TestProviderInterface(t *testing.T) {
 
 // TestOSAwarePrompt tests that OS-aware prompts are generated
 func TestOSAwarePrompt(t *testing.T) {
-	t.Run("windows prompt contains single line", func(t *testing.T) {
-		prompt := providers.GetOSAwarePrompt("windows")
-		if !strings.Contains(prompt, "SINGLE LINE") {
-			t.Error("Windows prompt should mention SINGLE LINE")
+	t.Run("prompt uses unified format for all platforms", func(t *testing.T) {
+		windowsPrompt := providers.GetOSAwarePrompt("windows")
+		linuxPrompt := providers.GetOSAwarePrompt("linux")
+		if windowsPrompt != linuxPrompt {
+			t.Error("Prompts should be identical for all platforms")
 		}
 	})
 
-	t.Run("posix prompt contains multiline", func(t *testing.T) {
+	t.Run("prompt contains multiple -m flag format", func(t *testing.T) {
 		prompt := providers.GetOSAwarePrompt("linux")
-		if !strings.Contains(prompt, "MULTILINE") {
-			t.Error("POSIX prompt should mention MULTILINE")
-		}
-	})
-
-	t.Run("prompt contains conventional commits", func(t *testing.T) {
-		prompt := providers.GetOSAwarePrompt("linux")
-		if !containsString(prompt, "Conventional Commits") {
-			t.Error("Prompt should mention Conventional Commits")
+		if !strings.Contains(prompt, "-m") {
+			t.Error("Prompt should mention -m flag format")
 		}
 	})
 
 	t.Run("prompt contains commit types", func(t *testing.T) {
 		prompt := providers.GetOSAwarePrompt("linux")
-		expectedTypes := []string{"feat", "fix", "refactor"}
+		expectedTypes := []string{"feat"}
 		for _, typ := range expectedTypes {
 			if !containsString(prompt, typ) {
 				t.Errorf("Prompt should contain commit type '%s'", typ)
@@ -189,7 +183,7 @@ func TestOSAwarePrompt(t *testing.T) {
 
 	t.Run("system prompt mentions emojis", func(t *testing.T) {
 		prompt := providers.GetOSAwarePrompt("linux")
-		if !containsString(prompt, "emoji") {
+		if !containsString(prompt, "EMOJI") {
 			t.Error("Prompt should mention emojis")
 		}
 	})

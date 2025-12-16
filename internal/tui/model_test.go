@@ -502,3 +502,148 @@ func TestStep(t *testing.T) {
 		t.Error("expected Active false")
 	}
 }
+
+// TestParseCommitMessages tests the parseCommitMessages function
+func TestParseCommitMessages(t *testing.T) {
+	t.Run("single -m flag with double quotes", func(t *testing.T) {
+		cmd := `git commit -m "feat(auth): Add login"`
+		messages, err := parseCommitMessages(cmd)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(messages) != 1 {
+			t.Fatalf("expected 1 message, got %d", len(messages))
+		}
+		if messages[0] != "feat(auth): Add login" {
+			t.Errorf("expected 'feat(auth): Add login', got '%s'", messages[0])
+		}
+	})
+
+	t.Run("multiple -m flags inline", func(t *testing.T) {
+		cmd := `git commit -m "feat(auth): :sparkles: Add login" -m "• Implement JWT" -m "• Add endpoint"`
+		messages, err := parseCommitMessages(cmd)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(messages) != 3 {
+			t.Fatalf("expected 3 messages, got %d", len(messages))
+		}
+		expected := []string{
+			"feat(auth): :sparkles: Add login",
+			"• Implement JWT",
+			"• Add endpoint",
+		}
+		for i, exp := range expected {
+			if messages[i] != exp {
+				t.Errorf("message[%d]: expected '%s', got '%s'", i, exp, messages[i])
+			}
+		}
+	})
+
+	t.Run("backslash line continuation (POSIX format)", func(t *testing.T) {
+		cmd := "git commit \\\n-m \"feat: Add feature\" \\\n-m \"• Detail 1\" \\\n-m \"• Detail 2\""
+		messages, err := parseCommitMessages(cmd)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(messages) != 3 {
+			t.Fatalf("expected 3 messages, got %d", len(messages))
+		}
+		expected := []string{
+			"feat: Add feature",
+			"• Detail 1",
+			"• Detail 2",
+		}
+		for i, exp := range expected {
+			if messages[i] != exp {
+				t.Errorf("message[%d]: expected '%s', got '%s'", i, exp, messages[i])
+			}
+		}
+	})
+
+	t.Run("handles escaped newlines in message", func(t *testing.T) {
+		cmd := `git commit -m "feat: Title\n• Detail 1\n• Detail 2"`
+		messages, err := parseCommitMessages(cmd)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(messages) != 1 {
+			t.Fatalf("expected 1 message, got %d", len(messages))
+		}
+		expected := "feat: Title\n• Detail 1\n• Detail 2"
+		if messages[0] != expected {
+			t.Errorf("expected '%s', got '%s'", expected, messages[0])
+		}
+	})
+
+	t.Run("handles single quotes", func(t *testing.T) {
+		cmd := `git commit -m 'feat: Add feature'`
+		messages, err := parseCommitMessages(cmd)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(messages) != 1 {
+			t.Fatalf("expected 1 message, got %d", len(messages))
+		}
+		if messages[0] != "feat: Add feature" {
+			t.Errorf("expected 'feat: Add feature', got '%s'", messages[0])
+		}
+	})
+
+	t.Run("empty command returns error", func(t *testing.T) {
+		_, err := parseCommitMessages("")
+		if err == nil {
+			t.Error("expected error for empty command")
+		}
+	})
+
+	t.Run("no -m flag returns error", func(t *testing.T) {
+		_, err := parseCommitMessages("git commit")
+		if err == nil {
+			t.Error("expected error for command without -m flag")
+		}
+	})
+
+	t.Run("handles escaped quotes in message", func(t *testing.T) {
+		cmd := `git commit -m "feat: Add \"quoted\" text"`
+		messages, err := parseCommitMessages(cmd)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(messages) != 1 {
+			t.Fatalf("expected 1 message, got %d", len(messages))
+		}
+		expected := `feat: Add "quoted" text`
+		if messages[0] != expected {
+			t.Errorf("expected '%s', got '%s'", expected, messages[0])
+		}
+	})
+
+	t.Run("handles emoji codes", func(t *testing.T) {
+		cmd := `git commit -m "feat(ui): :sparkles: Add new UI" -m "• :bug: Fix edge case"`
+		messages, err := parseCommitMessages(cmd)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(messages) != 2 {
+			t.Fatalf("expected 2 messages, got %d", len(messages))
+		}
+		if messages[0] != "feat(ui): :sparkles: Add new UI" {
+			t.Errorf("message[0]: expected 'feat(ui): :sparkles: Add new UI', got '%s'", messages[0])
+		}
+		if messages[1] != "• :bug: Fix edge case" {
+			t.Errorf("message[1]: expected '• :bug: Fix edge case', got '%s'", messages[1])
+		}
+	})
+
+	t.Run("handles CRLF line endings", func(t *testing.T) {
+		cmd := "git commit \\\r\n-m \"feat: Title\" \\\r\n-m \"• Detail\""
+		messages, err := parseCommitMessages(cmd)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(messages) != 2 {
+			t.Fatalf("expected 2 messages, got %d", len(messages))
+		}
+	})
+}
