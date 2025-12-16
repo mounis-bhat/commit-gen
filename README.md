@@ -2,7 +2,7 @@
 
 An interactive CLI tool that generates structured git commit messages using Google's Gemini AI, following the Conventional Commits standard with emojis. Built with [Bubble Tea](https://github.com/charmbracelet/bubbletea) for a beautiful terminal UI experience.
 
-## Feature list
+## Features
 
 - Interactive TUI powered by Bubble Tea and Lip Gloss
 - Analyzes staged git changes (`git diff --cached`)
