@@ -66,59 +66,80 @@ get_latest_version() {
     echo "$VERSION"
 }
 
+# Add INSTALL_DIR to PATH in shell profile files if not already present
+setup_path() {
+    case ":$PATH:" in
+        *":${INSTALL_DIR}:"*) return ;;
+    esac
+
+    EXPORT_LINE="export PATH=\"\$HOME/.local/bin:\$PATH\""
+    MODIFIED=""
+
+    for profile in "$HOME/.bashrc" "$HOME/.zshrc" "$HOME/.profile"; do
+        if [ -f "$profile" ]; then
+            if ! grep -qF "$EXPORT_LINE" "$profile" 2>/dev/null; then
+                printf "\n# Added by commit-gen installer\n%s\n" "$EXPORT_LINE" >> "$profile"
+                MODIFIED="$MODIFIED $profile"
+            fi
+        fi
+    done
+
+    if [ -n "$MODIFIED" ]; then
+        warn "${INSTALL_DIR} was not in your PATH."
+        info "Added to:$MODIFIED"
+        echo ""
+        echo "Restart your terminal or run:"
+        for f in $MODIFIED; do echo "    source $f"; done
+    fi
+}
+
 # Download and install
 install() {
     OS=$(detect_os)
     ARCH=$(detect_arch)
     VERSION=$(get_latest_version)
-    
+
     info "Detected OS: $OS, Architecture: $ARCH"
-    info "Latest version: $VERSION"
-    
+
+    if [ -f "${INSTALL_DIR}/${BINARY_NAME}" ]; then
+        OLD_VERSION=$("${INSTALL_DIR}/${BINARY_NAME}" --version 2>/dev/null || echo "unknown")
+        info "Upgrading existing installation (${OLD_VERSION} -> ${VERSION})..."
+    else
+        info "Installing ${BINARY_NAME} ${VERSION}..."
+    fi
+
     FILENAME="${BINARY_NAME}-${OS}-${ARCH}.tar.gz"
     DOWNLOAD_URL="https://github.com/${REPO}/releases/download/${VERSION}/${FILENAME}"
-    
+
     info "Downloading ${FILENAME}..."
-    
+
     # Create temp directory
     TMP_DIR=$(mktemp -d)
     trap 'rm -rf "$TMP_DIR"' EXIT
-    
+
     # Download
     if command -v curl >/dev/null 2>&1; then
         curl -sSfL "$DOWNLOAD_URL" -o "${TMP_DIR}/${FILENAME}" || error "Download failed. Please check if the release exists."
     else
         wget -q "$DOWNLOAD_URL" -O "${TMP_DIR}/${FILENAME}" || error "Download failed. Please check if the release exists."
     fi
-    
+
     # Extract
     info "Extracting..."
     tar -xzf "${TMP_DIR}/${FILENAME}" -C "$TMP_DIR"
-    
+
     # Install
     info "Installing to ${INSTALL_DIR}..."
     mkdir -p "$INSTALL_DIR"
     mv "${TMP_DIR}/${BINARY_NAME}" "${INSTALL_DIR}/${BINARY_NAME}"
     chmod +x "${INSTALL_DIR}/${BINARY_NAME}"
-    
+
     info "Successfully installed ${BINARY_NAME} to ${INSTALL_DIR}/${BINARY_NAME}"
-    
-    # Check if INSTALL_DIR is in PATH
-    case ":$PATH:" in
-        *":${INSTALL_DIR}:"*) ;;
-        *)
-            warn "${INSTALL_DIR} is not in your PATH."
-            echo ""
-            echo "Add it to your PATH by adding this line to your shell profile (~/.bashrc, ~/.zshrc, etc.):"
-            echo ""
-            echo "    export PATH=\"\$HOME/.local/bin:\$PATH\""
-            echo ""
-            echo "Then restart your terminal or run: source ~/.bashrc (or ~/.zshrc)"
-            ;;
-    esac
-    
+
+    setup_path
+
     echo ""
-    info "Installation complete! Run '${BINARY_NAME}' to get started."
+    info "commit-gen is ready. Run 'commit-gen' in any git repo."
 }
 
 install
