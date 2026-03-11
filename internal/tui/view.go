@@ -164,6 +164,12 @@ func (m Model) viewSelectProvider() string {
 			key:     "claude",
 			current: m.Provider == "claude",
 		},
+		{
+			name:    "OpenAI",
+			desc:    "Cloud, API key required",
+			key:     "openai",
+			current: m.Provider == "openai",
+		},
 	}
 
 	for i, provider := range providers {
@@ -196,18 +202,30 @@ func (m Model) viewSelectProvider() string {
 	return s.String()
 }
 
-// viewSelectModel renders the Ollama model selection state
+// viewSelectModel renders the model selection state for Ollama or OpenAI
 func (m Model) viewSelectModel() string {
 	var s strings.Builder
 
-	s.WriteString(SectionTitleStyle.Render("Select Ollama Model"))
+	var title, loadingHint string
+	var models []string
+	if m.Provider == "openai" {
+		title = "Select OpenAI Model"
+		loadingHint = "Validating API key and fetching models..."
+		models = m.OpenAIModels
+	} else {
+		title = "Select Ollama Model"
+		loadingHint = "Make sure Ollama is running on localhost:11434"
+		models = m.OllamaModels
+	}
+
+	s.WriteString(SectionTitleStyle.Render(title))
 	s.WriteString("\n\n")
 
-	if len(m.OllamaModels) == 0 {
+	if len(models) == 0 {
 		s.WriteString(m.Spinner.View())
 		s.WriteString(InfoStyle.Render(" Fetching available models..."))
 		s.WriteString("\n\n")
-		s.WriteString(HelpStyle.Render("Make sure Ollama is running on localhost:11434"))
+		s.WriteString(HelpStyle.Render(loadingHint))
 	} else {
 		// Show models in a scrollable list
 		maxVisible := m.GetContentHeight() - 4
@@ -220,8 +238,8 @@ func (m Model) viewSelectModel() string {
 			start = m.SelectedItem - maxVisible + 1
 		}
 		end := start + maxVisible
-		if end > len(m.OllamaModels) {
-			end = len(m.OllamaModels)
+		if end > len(models) {
+			end = len(models)
 		}
 
 		// Show scroll indicator if needed
@@ -231,7 +249,7 @@ func (m Model) viewSelectModel() string {
 		}
 
 		for i := start; i < end; i++ {
-			model := m.OllamaModels[i]
+			model := models[i]
 			if i == m.SelectedItem {
 				s.WriteString(SelectedMenuItemStyle.Render(fmt.Sprintf("%s %s", IconArrow, model)))
 			} else {
@@ -240,13 +258,13 @@ func (m Model) viewSelectModel() string {
 			s.WriteString("\n")
 		}
 
-		if end < len(m.OllamaModels) {
+		if end < len(models) {
 			s.WriteString(HelpStyle.Render("  ↓ more models below"))
 			s.WriteString("\n")
 		}
 
 		s.WriteString("\n")
-		s.WriteString(FileCountStyle.Render(fmt.Sprintf("%d models available", len(m.OllamaModels))))
+		s.WriteString(FileCountStyle.Render(fmt.Sprintf("%d models available", len(models))))
 	}
 
 	s.WriteString("\n\n")
@@ -258,7 +276,6 @@ func (m Model) viewSelectModel() string {
 
 	return s.String()
 }
-
 // viewInputKey renders the API key input state
 func (m Model) viewInputKey() string {
 	var s strings.Builder
@@ -272,6 +289,8 @@ func (m Model) viewInputKey() string {
 	var apiKeyLink string
 	if m.Provider == "claude" {
 		apiKeyLink = "https://console.anthropic.com/settings/keys"
+	} else if m.Provider == "openai" {
+		apiKeyLink = "https://platform.openai.com/api-keys"
 	} else {
 		apiKeyLink = "https://aistudio.google.com/apikey"
 	}

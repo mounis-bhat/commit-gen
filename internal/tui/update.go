@@ -42,7 +42,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					} else {
 						m.State = StateInputKey
 					}
-				} else {
+				} else if m.SelectedItem == 2 {
 					// Claude selected
 					m.Provider = "claude"
 					if m.ClaudeAPIKey != "" {
@@ -50,9 +50,34 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					} else {
 						m.State = StateInputKey
 					}
+				} else {
+					// OpenAI selected
+					m.Provider = "openai"
+					if m.OpenAIAPIKey != "" {
+						m.State = StateSelectModel
+						m.SelectedItem = 0
+						return m, FetchOpenAIModels(m.OpenAIAPIKey)
+					} else {
+						m.State = StateInputKey
+					}
 				}
 				return m, nil
 			case StateSelectModel:
+				if m.Provider == "openai" {
+					if len(m.OpenAIModels) == 0 || m.SelectedItem >= len(m.OpenAIModels) {
+						return m, nil
+					}
+					m.OpenAIModel = m.OpenAIModels[m.SelectedItem]
+					cfg := &config.Config{
+						Provider:     "openai",
+						OpenAIAPIKey: m.OpenAIAPIKey,
+						OpenAIModel:  m.OpenAIModel,
+					}
+					return m, tea.Batch(
+						SaveConfig(cfg),
+						ReadAvailableFiles(),
+					)
+				}
 				if len(m.OllamaModels) == 0 || m.SelectedItem >= len(m.OllamaModels) {
 					return m, nil // Wait for models to load
 				}
@@ -74,7 +99,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return m, nil
 				}
 				m.setCurrentAPIKey(key)
-				// Proceed to file selection instead of directly generating
+				if m.Provider == "openai" {
+					m.State = StateSelectModel
+					m.SelectedItem = 0
+					return m, FetchOpenAIModels(key)
+				}
 				return m, ReadAvailableFiles()
 			case StateSelectFiles:
 				// Check if any files are selected
@@ -108,13 +137,17 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case StateSelectProvider:
 				m.SelectedItem--
 				if m.SelectedItem < 0 {
-					m.SelectedItem = 2
+					m.SelectedItem = 3
 				}
 			case StateSelectModel:
-				if len(m.OllamaModels) > 0 {
+				models := m.OllamaModels
+				if m.Provider == "openai" {
+					models = m.OpenAIModels
+				}
+				if len(models) > 0 {
 					m.SelectedItem--
 					if m.SelectedItem < 0 {
-						m.SelectedItem = len(m.OllamaModels) - 1
+						m.SelectedItem = len(models) - 1
 					}
 				}
 			case StateShowResult:
@@ -135,13 +168,17 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			switch m.State {
 			case StateSelectProvider:
 				m.SelectedItem++
-				if m.SelectedItem > 2 {
+				if m.SelectedItem > 3 {
 					m.SelectedItem = 0
 				}
 			case StateSelectModel:
-				if len(m.OllamaModels) > 0 {
+				models := m.OllamaModels
+				if m.Provider == "openai" {
+					models = m.OpenAIModels
+				}
+				if len(models) > 0 {
 					m.SelectedItem++
-					if m.SelectedItem >= len(m.OllamaModels) {
+					if m.SelectedItem >= len(models) {
 						m.SelectedItem = 0
 					}
 				}
@@ -230,7 +267,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Always show provider selection, but load saved config for convenience
 		m.GeminiAPIKey = cfg.GeminiAPIKey
 		m.ClaudeAPIKey = cfg.ClaudeAPIKey
+		m.OpenAIAPIKey = cfg.OpenAIAPIKey
 		m.OllamaModel = cfg.OllamaModel
+		m.OpenAIModel = cfg.OpenAIModel
 		if cfg.Provider != "" {
 			m.Provider = cfg.Provider
 			// Pre-select the saved provider
@@ -241,6 +280,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.SelectedItem = 1
 			case "claude":
 				m.SelectedItem = 2
+			case "openai":
+				m.SelectedItem = 3
 			}
 		}
 		m.State = StateSelectProvider
@@ -262,8 +303,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			Provider:    m.Provider,
 			GeminiAPIKey: m.GeminiAPIKey,
 			ClaudeAPIKey: m.ClaudeAPIKey,
+			OpenAIAPIKey: m.OpenAIAPIKey,
 			OllamaURL:   "http://localhost:11434",
 			OllamaModel: m.OllamaModel,
+			OpenAIModel: m.OpenAIModel,
 		})
 		if err != nil {
 			return m, func() tea.Msg { return ErrorMsg{Err: err} }
@@ -301,8 +344,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			Provider:    m.Provider,
 			GeminiAPIKey: m.GeminiAPIKey,
 			ClaudeAPIKey: m.ClaudeAPIKey,
+			OpenAIAPIKey: m.OpenAIAPIKey,
 			OllamaURL:   "http://localhost:11434",
 			OllamaModel: m.OllamaModel,
+			OpenAIModel: m.OpenAIModel,
 		}
 		m.State = StateShowResult
 		m.SelectedItem = 0
@@ -324,7 +369,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case ModelsFetchedMsg:
-		m.OllamaModels = msg.Models
+		if m.Provider == "openai" {
+			m.OpenAIModels = msg.Models
+		} else {
+			m.OllamaModels = msg.Models
+		}
 		return m, nil
 
 	case ErrorMsg:
@@ -372,8 +421,10 @@ func (m Model) handleMenuSelection() (tea.Model, tea.Cmd) {
 			Provider:    m.Provider,
 			GeminiAPIKey: m.GeminiAPIKey,
 			ClaudeAPIKey: m.ClaudeAPIKey,
+			OpenAIAPIKey: m.OpenAIAPIKey,
 			OllamaURL:   "http://localhost:11434",
 			OllamaModel: m.OllamaModel,
+			OpenAIModel: m.OpenAIModel,
 		})
 		if err != nil {
 			return m, func() tea.Msg { return ErrorMsg{Err: err} }

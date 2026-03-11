@@ -134,8 +134,11 @@ type Model struct {
 	Provider       string
 	GeminiAPIKey   string
 	ClaudeAPIKey   string
+	OpenAIAPIKey   string
 	OllamaModel    string
 	OllamaModels   []string
+	OpenAIModel    string
+	OpenAIModels   []string
 	Diff           string
 	CommitMsg      string
 	Err            error
@@ -195,6 +198,8 @@ func (m Model) currentAPIKey() string {
 	switch m.Provider {
 	case "claude":
 		return m.ClaudeAPIKey
+	case "openai":
+		return m.OpenAIAPIKey
 	default:
 		return m.GeminiAPIKey
 	}
@@ -205,6 +210,8 @@ func (m *Model) setCurrentAPIKey(key string) {
 	switch m.Provider {
 	case "claude":
 		m.ClaudeAPIKey = key
+	case "openai":
+		m.OpenAIAPIKey = key
 	default:
 		m.GeminiAPIKey = key
 	}

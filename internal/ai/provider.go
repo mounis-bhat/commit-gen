@@ -23,6 +23,8 @@ func NewProvider(cfg *config.Config) (Provider, error) {
 		return providers.NewClaudeProvider(cfg.ClaudeAPIKey)
 	case "ollama":
 		return providers.NewOllamaProvider(cfg.OllamaURL, cfg.OllamaModel)
+	case "openai":
+		return providers.NewOpenAIProvider(cfg.OpenAIAPIKey, cfg.OpenAIModel)
 	default:
 		return nil, fmt.Errorf("unknown provider: %s", cfg.Provider)
 	}

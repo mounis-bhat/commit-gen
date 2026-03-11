@@ -12,8 +12,10 @@ type Config struct {
 	APIKey       string `json:"api_key"`       // deprecated: legacy Gemini key, migrated on load
 	GeminiAPIKey string `json:"gemini_api_key"` // for Gemini
 	ClaudeAPIKey string `json:"claude_api_key"` // for Claude
+	OpenAIAPIKey string `json:"openai_api_key"` // for OpenAI
 	OllamaURL    string `json:"ollama_url"`    // default: http://localhost:11434
 	OllamaModel  string `json:"ollama_model"`  // e.g., "qwen2.5-coder:3b"
+	OpenAIModel  string `json:"openai_model"`  // e.g., "gpt-4o"
 }
 
 // GetConfigPath returns the path to the configuration file.

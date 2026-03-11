@@ -289,6 +289,22 @@ func ExecuteCommit(commitMsg string) tea.Cmd {
 	}
 }
 
+// FetchOpenAIModels fetches available OpenAI models (also validates the API key).
+func FetchOpenAIModels(apiKey string) tea.Cmd {
+	return func() tea.Msg {
+		provider, err := providers.NewOpenAIProvider(apiKey, "")
+		if err != nil {
+			return ErrorMsg{Err: fmt.Errorf("invalid OpenAI API key: %w", err)}
+		}
+		ctx := context.Background()
+		models, err := provider.ListModels(ctx)
+		if err != nil {
+			return ErrorMsg{Err: fmt.Errorf("failed to fetch OpenAI models: %w", err)}
+		}
+		return ModelsFetchedMsg{Models: models}
+	}
+}
+
 // FetchOllamaModels fetches available Ollama models.
 func FetchOllamaModels(baseURL string) tea.Cmd {
 	return func() tea.Msg {
