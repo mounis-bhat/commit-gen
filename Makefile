@@ -11,7 +11,7 @@ help:
 	@echo "  make build        - Build the binary for current platform"
 	@echo "  make build-all    - Build for all supported platforms"
 	@echo "  make clean        - Remove build directories"
-	@echo "  make run          - Run with: make run API_KEY=your_key"
+	@echo "  make run          - Build and run the binary"
 	@echo "  make install-home - Build and install to ~/.local/bin"
 
 build:
@@ -22,10 +22,14 @@ clean:
 	rm -rf $(BUILD_DIR) $(DIST_DIR)
 
 run: build
-	./$(BUILD_DIR)/$(BINARY_NAME) $(API_KEY)
+	./$(BUILD_DIR)/$(BINARY_NAME)
 
 install-home: build
 	mkdir -p $(HOME)/.local/bin && cp $(BUILD_DIR)/$(BINARY_NAME) $(HOME)/.local/bin/
+	@case ":$$PATH:" in \
+		*":$(HOME)/.local/bin:"*) ;; \
+		*) echo ""; echo "NOTE: Add ~/.local/bin to your PATH:"; echo "  export PATH=\"\$$HOME/.local/bin:\$$PATH\""; echo "Then run: source ~/.bashrc (or ~/.zshrc)" ;; \
+	esac
 
 # Cross-compilation targets
 build-all: clean
