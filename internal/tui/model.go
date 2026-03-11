@@ -132,7 +132,8 @@ type Model struct {
 	TextInput      textinput.Model
 	Viewport       viewport.Model
 	Provider       string
-	APIKey         string
+	GeminiAPIKey   string
+	ClaudeAPIKey   string
 	OllamaModel    string
 	OllamaModels   []string
 	Diff           string
@@ -165,9 +166,9 @@ func NewModel() Model {
 	s.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("#FF79C6"))
 
 	ti := textinput.New()
-	ti.Placeholder = "Enter your Gemini API key..."
+	ti.Placeholder = "Enter your API key..."
 	ti.Focus()
-	ti.CharLimit = 100
+	ti.CharLimit = 200
 	ti.Width = 50
 	ti.EchoMode = textinput.EchoPassword
 	ti.EchoCharacter = '•'
@@ -186,6 +187,26 @@ func NewModel() Model {
 		Width:         defaultWidth,
 		Height:        defaultHeight,
 		Ready:         false,
+	}
+}
+
+// currentAPIKey returns the API key for the currently selected provider.
+func (m Model) currentAPIKey() string {
+	switch m.Provider {
+	case "claude":
+		return m.ClaudeAPIKey
+	default:
+		return m.GeminiAPIKey
+	}
+}
+
+// setCurrentAPIKey sets the API key for the currently selected provider.
+func (m *Model) setCurrentAPIKey(key string) {
+	switch m.Provider {
+	case "claude":
+		m.ClaudeAPIKey = key
+	default:
+		m.GeminiAPIKey = key
 	}
 }
 

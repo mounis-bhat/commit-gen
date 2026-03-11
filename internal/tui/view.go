@@ -158,6 +158,12 @@ func (m Model) viewSelectProvider() string {
 			key:     "gemini",
 			current: m.Provider == "gemini",
 		},
+		{
+			name:    "Claude",
+			desc:    "Cloud, API key required",
+			key:     "claude",
+			current: m.Provider == "claude",
+		},
 	}
 
 	for i, provider := range providers {
@@ -263,9 +269,15 @@ func (m Model) viewInputKey() string {
 
 	// Warning box
 	warningBox := BoxStyle.Width(width - 4).BorderForeground(colorOrange)
-	warningContent := fmt.Sprintf("%s No API key found!\n\nGet your free API key from:\n%s",
+	var apiKeyLink string
+	if m.Provider == "claude" {
+		apiKeyLink = "https://console.anthropic.com/settings/keys"
+	} else {
+		apiKeyLink = "https://aistudio.google.com/apikey"
+	}
+	warningContent := fmt.Sprintf("%s No API key found!\n\nGet your API key from:\n%s",
 		IconWarning,
-		LinkStyle.Render("https://aistudio.google.com/apikey"))
+		LinkStyle.Render(apiKeyLink))
 	s.WriteString(warningBox.Render(warningContent))
 	s.WriteString("\n\n")
 

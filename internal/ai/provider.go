@@ -18,7 +18,9 @@ type Provider interface {
 func NewProvider(cfg *config.Config) (Provider, error) {
 	switch cfg.Provider {
 	case "gemini":
-		return providers.NewGeminiProvider(cfg.APIKey)
+		return providers.NewGeminiProvider(cfg.GeminiAPIKey)
+	case "claude":
+		return providers.NewClaudeProvider(cfg.ClaudeAPIKey)
 	case "ollama":
 		return providers.NewOllamaProvider(cfg.OllamaURL, cfg.OllamaModel)
 	default:

@@ -8,10 +8,12 @@ import (
 
 // Config represents the application configuration.
 type Config struct {
-	Provider    string `json:"provider"`     // "gemini" or "ollama"
-	APIKey      string `json:"api_key"`      // for gemini
-	OllamaURL   string `json:"ollama_url"`   // default: http://localhost:11434
-	OllamaModel string `json:"ollama_model"` // e.g., "qwen2.5-coder:3b"
+	Provider     string `json:"provider"`      // "gemini", "claude", or "ollama"
+	APIKey       string `json:"api_key"`       // deprecated: legacy Gemini key, migrated on load
+	GeminiAPIKey string `json:"gemini_api_key"` // for Gemini
+	ClaudeAPIKey string `json:"claude_api_key"` // for Claude
+	OllamaURL    string `json:"ollama_url"`    // default: http://localhost:11434
+	OllamaModel  string `json:"ollama_model"`  // e.g., "qwen2.5-coder:3b"
 }
 
 // GetConfigPath returns the path to the configuration file.
@@ -34,6 +36,12 @@ func Load() (*Config, error) {
 	var config Config
 	if err := json.Unmarshal(data, &config); err != nil {
 		return nil, err
+	}
+
+	// Migrate legacy api_key to gemini_api_key
+	if config.APIKey != "" && config.GeminiAPIKey == "" {
+		config.GeminiAPIKey = config.APIKey
+		config.APIKey = ""
 	}
 
 	// Set defaults for Ollama

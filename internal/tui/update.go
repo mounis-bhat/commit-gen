@@ -34,11 +34,18 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					if len(m.OllamaModels) == 0 {
 						return m, FetchOllamaModels("http://localhost:11434")
 					}
-				} else {
+				} else if m.SelectedItem == 1 {
 					// Gemini selected
 					m.Provider = "gemini"
-					if m.APIKey != "" {
-						// API key already set, proceed to file selection
+					if m.GeminiAPIKey != "" {
+						return m, ReadAvailableFiles()
+					} else {
+						m.State = StateInputKey
+					}
+				} else {
+					// Claude selected
+					m.Provider = "claude"
+					if m.ClaudeAPIKey != "" {
 						return m, ReadAvailableFiles()
 					} else {
 						m.State = StateInputKey
@@ -66,7 +73,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if key == "" {
 					return m, nil
 				}
-				m.APIKey = key
+				m.setCurrentAPIKey(key)
 				// Proceed to file selection instead of directly generating
 				return m, ReadAvailableFiles()
 			case StateSelectFiles:
@@ -101,7 +108,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case StateSelectProvider:
 				m.SelectedItem--
 				if m.SelectedItem < 0 {
-					m.SelectedItem = 1
+					m.SelectedItem = 2
 				}
 			case StateSelectModel:
 				if len(m.OllamaModels) > 0 {
@@ -128,7 +135,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			switch m.State {
 			case StateSelectProvider:
 				m.SelectedItem++
-				if m.SelectedItem > 1 {
+				if m.SelectedItem > 2 {
 					m.SelectedItem = 0
 				}
 			case StateSelectModel:
@@ -221,7 +228,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case ConfigLoadedMsg:
 		cfg := msg.Config
 		// Always show provider selection, but load saved config for convenience
-		m.APIKey = cfg.APIKey
+		m.GeminiAPIKey = cfg.GeminiAPIKey
+		m.ClaudeAPIKey = cfg.ClaudeAPIKey
 		m.OllamaModel = cfg.OllamaModel
 		if cfg.Provider != "" {
 			m.Provider = cfg.Provider
@@ -231,6 +239,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.SelectedItem = 0
 			case "gemini":
 				m.SelectedItem = 1
+			case "claude":
+				m.SelectedItem = 2
 			}
 		}
 		m.State = StateSelectProvider
@@ -250,7 +260,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		provider, err := ai.NewProvider(&config.Config{
 			Provider:    m.Provider,
-			APIKey:      m.APIKey,
+			GeminiAPIKey: m.GeminiAPIKey,
+			ClaudeAPIKey: m.ClaudeAPIKey,
 			OllamaURL:   "http://localhost:11434",
 			OllamaModel: m.OllamaModel,
 		})
@@ -288,7 +299,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Save config after successful generation
 		cfg := &config.Config{
 			Provider:    m.Provider,
-			APIKey:      m.APIKey,
+			GeminiAPIKey: m.GeminiAPIKey,
+			ClaudeAPIKey: m.ClaudeAPIKey,
 			OllamaURL:   "http://localhost:11434",
 			OllamaModel: m.OllamaModel,
 		}
@@ -358,7 +370,8 @@ func (m Model) handleMenuSelection() (tea.Model, tea.Cmd) {
 		m.SelectedItem = 0
 		provider, err := ai.NewProvider(&config.Config{
 			Provider:    m.Provider,
-			APIKey:      m.APIKey,
+			GeminiAPIKey: m.GeminiAPIKey,
+			ClaudeAPIKey: m.ClaudeAPIKey,
 			OllamaURL:   "http://localhost:11434",
 			OllamaModel: m.OllamaModel,
 		})
